@@ -7,16 +7,15 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Initialize Supabase (Persistent operational source of truth)
+// Initialize Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL, 
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// In-memory session store for conversational state (Section 18: Current Limitations)
+// In-memory session store
 const sessions = new Map();
 
-// Helper: Normalize phone numbers to prevent formatting mismatches (Section 9.2)
 function normalizePhone(phone) {
   const value = String(phone || '').replace(/\D/g, '');
   if (value.startsWith('254')) return value;
@@ -24,7 +23,6 @@ function normalizePhone(phone) {
   return value;
 }
 
-// Helper: Send text messages back to the user via WhatsApp Cloud API (Section 12)
 async function sendWhatsAppMessage(to, message) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -46,7 +44,7 @@ async function sendWhatsAppMessage(to, message) {
   return response.json();
 }
 
-// 1. META WEBHOOK VERIFICATION (Section 17: Observability & Health Checks)
+// 1. META WEBHOOK VERIFICATION
 app.get('/api/whatsapp/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -60,9 +58,8 @@ app.get('/api/whatsapp/webhook', (req, res) => {
   return res.sendStatus(403);
 });
 
-// 2. INCOMING WHATSAPP MESSAGES (Section 8: Customer WhatsApp Workflow)
+// 2. INCOMING WHATSAPP MESSAGES
 app.post('/api/whatsapp/webhook', async (req, res) => {
-  // Observability log
   console.log('Webhook POST received at:', new Date().toISOString());
 
   try {
@@ -73,12 +70,16 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           const from = normalizePhone(message?.from);
           const text = message?.text?.body?.trim().toLowerCase();
           
-          if (!from || !text) continue;
+          // ADD THESE TWO LINES TO SEE EXACTLY WHAT THE SERVER SEES:
+          console.log('Parsed FROM:', from, 'Parsed TEXT:', text);
 
-          // Retrieve or initialize session
+          if (!from || !text) {
+            console.log('Skipping payload: missing from or text');
+            continue; 
+          }
+
           let session = sessions.get(from) || { state: 'greeting' };
 
-          // State Machine Logic
           if (text === 'hi' || text === 'hello' || text === 'start') {
             session = { state: 'name' };
             sessions.set(from, session);
@@ -137,7 +138,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             }
             
             if (text === 'yes' || text === 'y') {
-              // Save to Supabase (Section 5: Data Model)
               const { error } = await supabase.from('pickup_requests').insert({
                 patron_name: session.patron_name,
                 patron_phone: from,
@@ -154,7 +154,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                 await sendWhatsAppMessage(from, "Request Confirmed! Our team will contact you shortly to arrange the pickup.");
               }
               
-              // Reset session
               sessions.delete(from);
               continue;
             }
@@ -163,7 +162,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // Fallback for lost sessions or unrecognized commands
           if (session.state !== 'greeting') {
              await sendWhatsAppMessage(from, "It looks like our connection reset or I didn't understand. Please send 'Hi' to start a new request.");
              sessions.delete(from);
@@ -174,7 +172,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
     return res.status(200).send('EVENT_RECEIVED');
   } catch (error) {
     console.error('Webhook Error:', error);
-    return res.status(200).send('EVENT_RECEIVED'); // Always return 200 to Meta
+    return res.status(200).send('EVENT_RECEIVED');
   }
 });
 
