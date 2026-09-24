@@ -9,12 +9,74 @@ app.use(express.json());
 
 // Initialize Supabase
 const supabase = createClient(
-  process.env.SUPABASE_URL, 
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// In-memory session store
-const sessions = new Map();
+// ---- Message de-duplication ----
+// Meta can deliver the same event more than once (retries / multiple
+// subscriptions). We keep a short-lived record of message IDs (wamid)
+// we've already processed so a repeated delivery is a no-op.
+const processedMessages = new Map(); // wamid -> timestamp
+const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function isDuplicateMessage(id) {
+  if (!id) return false;
+  const now = Date.now();
+  for (const [key, ts] of processedMessages) {
+    if (now - ts > DEDUP_TTL_MS) processedMessages.delete(key);
+  }
+  if (processedMessages.has(id)) return true;
+  processedMessages.set(id, now);
+  return false;
+}
+
+// ---- Session persistence (Supabase-backed) ----
+// Sessions used to live in an in-memory Map, which is wiped on every
+// Render redeploy or free-tier spin-down. They now live in a `sessions`
+// table so a patron's progress survives restarts.
+async function getSession(phone) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('phone', phone)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Supabase getSession error:', error);
+    return { state: 'greeting' };
+  }
+  if (!data) return { state: 'greeting' };
+
+  return {
+    state: data.state,
+    patron_name: data.patron_name ?? undefined,
+    waste_type: data.waste_type ?? undefined,
+    estimated_volume_kg: data.estimated_volume_kg ?? undefined,
+    pickup_location: data.pickup_location ?? undefined
+  };
+}
+
+async function setSession(phone, session) {
+  const { error } = await supabase.from('sessions').upsert(
+    {
+      phone,
+      state: session.state,
+      patron_name: session.patron_name ?? null,
+      waste_type: session.waste_type ?? null,
+      estimated_volume_kg: session.estimated_volume_kg ?? null,
+      pickup_location: session.pickup_location ?? null,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: 'phone' }
+  );
+  if (error) console.error('Supabase setSession error:', error);
+}
+
+async function deleteSession(phone) {
+  const { error } = await supabase.from('sessions').delete().eq('phone', phone);
+  if (error) console.error('Supabase deleteSession error:', error);
+}
 
 function normalizePhone(phone) {
   const value = String(phone || '').replace(/\D/g, '');
@@ -26,7 +88,7 @@ function normalizePhone(phone) {
 async function sendWhatsAppMessage(to, message) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  
+
   const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
     method: 'POST',
     headers: {
@@ -69,20 +131,25 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
         for (const message of change?.value?.messages || []) {
           const from = normalizePhone(message?.from);
           const text = message?.text?.body?.trim().toLowerCase();
-          
-          // ADD THESE TWO LINES TO SEE EXACTLY WHAT THE SERVER SEES:
+          const messageId = message?.id;
+
           console.log('Parsed FROM:', from, 'Parsed TEXT:', text);
+
+          if (isDuplicateMessage(messageId)) {
+            console.log('Skipping duplicate delivery of message:', messageId);
+            continue;
+          }
 
           if (!from || !text) {
             console.log('Skipping payload: missing from or text');
-            continue; 
+            continue;
           }
 
-          let session = sessions.get(from) || { state: 'greeting' };
+          let session = await getSession(from);
 
           if (text === 'hi' || text === 'hello' || text === 'start') {
             session = { state: 'name' };
-            sessions.set(from, session);
+            await setSession(from, session);
             await sendWhatsAppMessage(from, "Welcome to Grow and Feeds Patrons.\n\nTo start a pickup request, please reply with your Name.");
             continue;
           }
@@ -90,7 +157,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           if (session.state === 'name') {
             session.patron_name = text;
             session.state = 'waste_type';
-            sessions.set(from, session);
+            await setSession(from, session);
             await sendWhatsAppMessage(from, `Thanks ${session.patron_name}.\n\nWhat type of organic waste do you have?\nReply with:\n1. fruit_veg\n2. crop_residue\n3. manure`);
             continue;
           }
@@ -99,7 +166,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             if (['fruit_veg', 'crop_residue', 'manure'].includes(text)) {
               session.waste_type = text;
               session.state = 'volume';
-              sessions.set(from, session);
+              await setSession(from, session);
               await sendWhatsAppMessage(from, `Great. You selected ${session.waste_type}.\n\nApproximately how many kilograms (kg) do you have? (Reply with a number, e.g., 50)`);
             } else {
               await sendWhatsAppMessage(from, "Please reply with exactly: fruit_veg, crop_residue, or manure.");
@@ -115,7 +182,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             }
             session.estimated_volume_kg = volume;
             session.state = 'location';
-            sessions.set(from, session);
+            await setSession(from, session);
             await sendWhatsAppMessage(from, "Got it. Where should we pick this up? (Reply with your location/address)");
             continue;
           }
@@ -123,8 +190,8 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           if (session.state === 'location') {
             session.pickup_location = text;
             session.state = 'confirmation';
-            sessions.set(from, session);
-            
+            await setSession(from, session);
+
             const summary = `Please confirm your pickup request:\n\nName: ${session.patron_name}\nWaste: ${session.waste_type}\nVolume: ${session.estimated_volume_kg} kg\nLocation: ${session.pickup_location}\n\nReply YES to confirm or NO to cancel.`;
             await sendWhatsAppMessage(from, summary);
             continue;
@@ -132,11 +199,11 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
           if (session.state === 'confirmation') {
             if (text === 'no' || text === 'cancel') {
-              sessions.delete(from);
+              await deleteSession(from);
               await sendWhatsAppMessage(from, "Request cancelled. Send 'Hi' to start over.");
               continue;
             }
-            
+
             if (text === 'yes' || text === 'y') {
               const { error } = await supabase.from('pickup_requests').insert({
                 patron_name: session.patron_name,
@@ -153,18 +220,18 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               } else {
                 await sendWhatsAppMessage(from, "Request Confirmed! Our team will contact you shortly to arrange the pickup.");
               }
-              
-              sessions.delete(from);
+
+              await deleteSession(from);
               continue;
             }
-            
+
             await sendWhatsAppMessage(from, "Please reply YES to confirm or NO to cancel.");
             continue;
           }
 
           if (session.state !== 'greeting') {
-             await sendWhatsAppMessage(from, "It looks like our connection reset or I didn't understand. Please send 'Hi' to start a new request.");
-             sessions.delete(from);
+            await sendWhatsAppMessage(from, "It looks like our connection reset or I didn't understand. Please send 'Hi' to start a new request.");
+            await deleteSession(from);
           }
         }
       }
