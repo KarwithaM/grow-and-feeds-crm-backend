@@ -479,6 +479,14 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
   if (error) return res.status(500).json({ error: error.message });
 
   await logPickupEvent(id, status, notes);
+
+  // NEW: Notify the patron when the waste is successfully processed
+  if (status === 'processed' && data?.patron_phone) {
+    const patronMessage = `Thank you for contributing to a greener environment. Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been successfully processed into Black Soldier Fly organic fertilizer and animal feed. We appreciate your partnership with Grow and Feeds Patrons.`;
+    
+    await sendWhatsAppMessage(data.patron_phone, patronMessage);
+  }
+
   res.json(data);
 });
 // SMART DISPATCH: Auto-assign a worker based on service area matching
