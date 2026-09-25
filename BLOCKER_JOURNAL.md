@@ -7,8 +7,6 @@
 ## Executive Summary
 This journal tracks the critical blockers encountered while building the architecture for the Grow And Feeds Patrons waste collection workflow. The primary challenges centered around Meta WhatsApp Cloud API Development Mode restrictions, Render free-tier infrastructure limitations, and silent failure modes in the Node.js/Express webhook handler. All blockers have been successfully resolved, resulting in a fully functional end-to-end conversational intake flow.
 
-## Blocker Log
-
 ## Blocker #1: Silent Webhook Skips & Missing State
 
 **Symptom**: Inbound WhatsApp messages triggered the Webhook POST received log, but the bot failed to reply. No error logs were generated.
