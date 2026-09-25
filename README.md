@@ -19,7 +19,7 @@ This project is built on the architecture adapted for waste collection logistics
 | Layer | Technology | Responsibility |
 | :--- | :--- | :--- |
 | **User Channel** | Meta WhatsApp Cloud API | Patron intake and conversational state |
-| **Application** | Node.js + Express | Business logic, webhooks, status transitions |
+| **Application** | Node.js + Express | Business logic, webhooks, status transitions, AI fallback |
 | **Database** | Supabase (PostgreSQL) | Persistent operational source of truth |
 | **Hosting** | Render | Production hosting, environment, logs |
 | **Source/Deploy** | GitHub → Render | Version control and automated deployment |
@@ -30,14 +30,16 @@ This project is built on the architecture adapted for waste collection logistics
 ## Features
 
 - **Conversational Intake:** Step-by-step WhatsApp flow to collect patron details, waste type, volume, and location.
-- **State Management:** In-memory session handling to guide users through the multi-step request process.
-- **Data Persistence:** Automatically saves confirmed pickup requests to Supabase with a `pending` status.
-- **Observability:** Deep logging for inbound Meta payloads and parsed message data to aid in troubleshooting.
-- **Phone Normalization:** Automatically formats incoming phone numbers to ensure consistent database matching.
+- **Persistent State Management:** Supabase-backed session handling ensures patron progress survives server restarts or spin-downs.
+- **Smart Dispatch Algorithm:** Backend logic that matches incoming pickup locations against field workers' service areas to optimize routing and reduce fuel costs.
+- **Three-Step Patron Transparency:** Automated WhatsApp notifications to patrons when a worker is assigned, when waste is safely received, and when it is successfully processed.
+- **AI-Powered Conversational Fallback:** Integrated Qwen API to handle out-of-flow patron questions, providing intelligent, brand-aligned responses about business operations.
+- **Secure Operator Dashboard:** Lightweight web interface protected by an API key for viewing requests, managing field workers, and triggering auto-assignment.
 
 ## Data Model
 
 The system relies on four core tables in Supabase:
+
 1. **pickup_requests:** Stores the patron's name, phone, location, waste type, estimated volume, assigned worker, and canonical status (pending, assigned, collected, processed, cancelled).
 2. **field_workers:** Stores the operational workers/collectors, their phone numbers, and availability status (available or busy).
 3. **pickup_events:** An audit log tracking every significant status change for operational visibility and troubleshooting.
@@ -60,11 +62,14 @@ To run this project, you must configure the following environment variables (e.g
 | Variable | Purpose |
 | :--- | :--- |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Backend database authentication (Keep secret!) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend database authentication (Keep secret) |
 | `WHATSAPP_VERIFY_TOKEN` | Webhook verification token for Meta |
-| `WHATSAPP_ACCESS_TOKEN` | Meta API access token (Keep secret!) |
+| `WHATSAPP_ACCESS_TOKEN` | Meta API access token (Keep secret) |
 | `WHATSAPP_PHONE_NUMBER_ID` | Meta phone number ID for sending messages |
+| `DASHBOARD_API_KEY` | Secret key required to access the Operator Dashboard API |
+| `QWEN_API_KEY` | API key for ModelScope/Qwen AI conversational fallback |
 | `PORT` | Render application port (defaults to 10000) |
+
 
 ## Local Setup & Installation
 
@@ -84,8 +89,8 @@ To run this project, you must configure the following environment variables (e.g
 ## Deployment
 
 This application is deployed on Render via continuous deployment from the main branch on GitHub.
-Build Command: npm install
-Start Command: npm start
+- Build Command: npm install
+- Start Command: npm start
 Note: Because this runs on Render's free tier, the server may spin down after periods of inactivity. An external uptime monitor (like UptimeRobot) is recommended to keep the webhook responsive.
 
 ## Current Limitations
@@ -96,9 +101,9 @@ Note: Because this runs on Render's free tier, the server may spin down after pe
 ## Next System Increments
 
 Future development will focus on:
-- Transitioning to a permanent Meta System User Access Token.
-- Promoting the Meta App to Live Mode to remove test-number restrictions.
-- Implementing WhatsApp interactive buttons for field workers to update pickup statuses (e.g., "Mark Picked Up") directly from their phones.
+- **Dashboard Search and Filtering**: Adding operational visibility features to filter requests by date, status, waste type, or location.
+- **Operational Metrics**: Adding reporting dashboards (e.g., total kg collected per week, top service areas).
+- **Permanent Meta Access Token and Live Mode**: Transitioning to a permanent System User Access Token and promoting the app to remove test-number restrictions.
 
 ## Field Worker Workflow (Logistics)
 1. Operator views `pending` requests on the secure Operator Dashboard.
