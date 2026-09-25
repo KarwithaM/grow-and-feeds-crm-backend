@@ -12,11 +12,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 
-// Serves /public/dashboard.html at https://<your-render-url>/dashboard.html
+// Serves /public/dashboard.html
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Simple shared-secret check for the operator dashboard's API calls.
-// Set DASHBOARD_API_KEY in Render's environment variables.
 function requireDashboardKey(req, res, next) {
   const key = req.header('x-api-key');
   if (!process.env.DASHBOARD_API_KEY || key !== process.env.DASHBOARD_API_KEY) {
@@ -25,18 +23,14 @@ function requireDashboardKey(req, res, next) {
   next();
 }
 
-// Initialize Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// ---- Message de-duplication ----
-// Meta can deliver the same event more than once (retries / multiple
-// subscriptions). We keep a short-lived record of message IDs (wamid)
-// we've already processed so a repeated delivery is a no-op.
-const processedMessages = new Map(); // wamid -> timestamp
-const DEDUP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+// Message de-duplication
+const processedMessages = new Map();
+const DEDUP_TTL_MS = 10 * 60 * 1000;
 
 function isDuplicateMessage(id) {
   if (!id) return false;
@@ -49,23 +43,11 @@ function isDuplicateMessage(id) {
   return false;
 }
 
-// ---- Session persistence (Supabase-backed) ----
-// Sessions used to live in an in-memory Map, which is wiped on every
-// Render redeploy or free-tier spin-down. They now live in a `sessions`
-// table so a patron's progress survives restarts.
+// Session persistence
 async function getSession(phone) {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('phone', phone)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Supabase getSession error:', error);
-    return { state: 'greeting' };
-  }
+  const { data, error } = await supabase.from('sessions').select('*').eq('phone', phone).maybeSingle();
+  if (error) { console.error('Supabase getSession error:', error); return { state: 'greeting' }; }
   if (!data) return { state: 'greeting' };
-
   return {
     state: data.state,
     patron_name: data.patron_name ?? undefined,
@@ -109,10 +91,7 @@ async function sendWhatsAppMessage(to, message) {
 
   const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -122,6 +101,42 @@ async function sendWhatsAppMessage(to, message) {
     })
   });
   return response.json();
+}
+
+// NEW: Send Interactive Assignment Message to Field Worker
+async function sendWhatsAppAssignment(to, patronName, location, wasteType, volume, requestId) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  const bodyText = `NEW PICKUP ASSIGNED\n\nPatron: ${patronName}\nLocation: ${location}\nWaste: ${wasteType}\nVolume: ${volume} kg\n\nPlease tap a button to update status:`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: bodyText },
+          action: {
+            buttons: [
+              { type: 'reply', reply: { id: `collected_${requestId}`, title: 'Collected' } },
+              { type: 'reply', reply: { id: `failed_${requestId}`, title: 'Not Picked' } }
+            ]
+          }
+        }
+      })
+    });
+    const result = await response.json();
+    console.log('WhatsApp Assignment Sent:', result);
+    return result;
+  } catch (err) {
+    console.error('Error sending WhatsApp assignment:', err);
+  }
 }
 
 // 1. META WEBHOOK VERIFICATION
@@ -148,21 +163,108 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
       for (const change of entry?.changes || []) {
         for (const message of change?.value?.messages || []) {
           const from = normalizePhone(message?.from);
-          const text = message?.text?.body?.trim().toLowerCase();
           const messageId = message?.id;
-
-          console.log('Parsed FROM:', from, 'Parsed TEXT:', text);
 
           if (isDuplicateMessage(messageId)) {
             console.log('Skipping duplicate delivery of message:', messageId);
             continue;
           }
 
-          if (!from || !text) {
+          // NEW: Parse Interactive Button Payloads
+          let text = '';
+          let actionRequestId = null;
+          let btnId = '';
+
+          if (message?.type === 'interactive' && message?.interactive?.type === 'button_reply') {
+            text = message?.interactive?.button_reply?.title?.trim().toLowerCase();
+            btnId = message?.interactive?.button_reply?.id || '';
+            if (btnId && btnId.includes('_')) {
+              const parts = btnId.split('_');
+              actionRequestId = parts.slice(1).join('_'); // Extracts the UUID
+            }
+          } else {
+            text = message?.text?.body?.trim().toLowerCase();
+          }
+
+          if (!from || (!text && !actionRequestId)) {
             console.log('Skipping payload: missing from or text');
             continue;
           }
 
+          // NEW: FIELD WORKER INTERACTIVE BUTTON HANDLER
+          if (actionRequestId) {
+            console.log('Field worker action detected. Request:', actionRequestId, 'Action:', text);
+            
+            const { data: request, error: reqError } = await supabase
+              .from('pickup_requests')
+              .select('id, status, worker_id, field_workers(id, phone)')
+              .eq('id', actionRequestId)
+              .maybeSingle();
+
+            if (reqError || !request) {
+              console.error('Request not found for button action:', actionRequestId);
+              return res.status(200).send('EVENT_RECEIVED');
+            }
+
+            // Security: Verify the sender's phone matches the assigned worker's phone
+            const dbWorkerPhone = normalizePhone(request.field_workers?.phone);
+            if (dbWorkerPhone !== from) {
+              console.log('Security Alert: Phone mismatch. Expected:', dbWorkerPhone, 'Got:', from);
+              await sendWhatsAppMessage(from, "SECURITY ALERT: You are not authorized to update this request.");
+              return res.status(200).send('EVENT_RECEIVED');
+            }
+
+            let newStatus = request.status;
+            let eventNotes = '';
+            
+            if (text.includes('collected') || btnId.startsWith('collected')) {
+              if (request.status === 'assigned' || request.status === 'pending') {
+                newStatus = 'collected';
+                eventNotes = 'Field worker marked as collected via WhatsApp';
+              }
+            } else if (text.includes('not picked') || text.includes('failed') || btnId.startsWith('failed')) {
+              if (request.status === 'assigned' || request.status === 'pending') {
+                newStatus = 'cancelled';
+                eventNotes = 'Field worker marked as not picked/cancelled via WhatsApp';
+              }
+            }
+
+            if (newStatus !== request.status) {
+              const { error: updateError } = await supabase
+                .from('pickup_requests')
+                .update({
+                  status: newStatus,
+                  updated_at: new Date().toISOString(),
+                  ...(newStatus === 'assigned' ? { assigned_at: new Date().toISOString() } : {}),
+                  ...(newStatus === 'collected' ? { collected_at: new Date().toISOString() } : {}),
+                  ...(newStatus === 'processed' ? { processed_at: new Date().toISOString() } : {})
+                })
+                .eq('id', actionRequestId);
+
+              if (updateError) {
+                console.error('Failed to update request status:', updateError);
+                await sendWhatsAppMessage(from, "FAILED TO UPDATE REQUEST. Please contact the operator.");
+              } else {
+                await logPickupEvent(actionRequestId, newStatus, eventNotes);
+
+                // Release the worker
+                if (request.worker_id) {
+                  await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
+                }
+
+                const confirmMsg = newStatus === 'collected' 
+                  ? `SUCCESS: Pickup marked as COLLECTED.\n\nYou are now available for new assignments.`
+                  : `NOTED: Pickup marked as CANCELLED.\n\nYou are now available for new assignments.`;
+                await sendWhatsAppMessage(from, confirmMsg);
+              }
+            } else {
+              await sendWhatsAppMessage(from, "INFO: This request is already in that status.");
+            }
+            
+            return res.status(200).send('EVENT_RECEIVED');
+          }
+
+          // PATRON CONVERSATIONAL INTAKE (Existing Logic)
           let session = await getSession(from);
 
           if (text === 'hi' || text === 'hello' || text === 'start') {
@@ -209,7 +311,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             session.pickup_location = text;
             session.state = 'confirmation';
             await setSession(from, session);
-
             const summary = `Please confirm your pickup request:\n\nName: ${session.patron_name}\nWaste: ${session.waste_type}\nVolume: ${session.estimated_volume_kg} kg\nLocation: ${session.pickup_location}\n\nReply YES to confirm or NO to cancel.`;
             await sendWhatsAppMessage(from, summary);
             continue;
@@ -221,7 +322,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               await sendWhatsAppMessage(from, "Request cancelled. Send 'Hi' to start over.");
               continue;
             }
-
             if (text === 'yes' || text === 'y') {
               const { error } = await supabase.from('pickup_requests').insert({
                 patron_name: session.patron_name,
@@ -231,18 +331,15 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                 pickup_location: session.pickup_location,
                 status: 'pending'
               });
-
               if (error) {
                 console.error('Supabase Insert Error:', error);
                 await sendWhatsAppMessage(from, "We could not save your request right now. Please try again later.");
               } else {
                 await sendWhatsAppMessage(from, "Request Confirmed! Our team will contact you shortly to arrange the pickup.");
               }
-
               await deleteSession(from);
               continue;
             }
-
             await sendWhatsAppMessage(from, "Please reply YES to confirm or NO to cancel.");
             continue;
           }
@@ -261,9 +358,8 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
   }
 });
 
-// ---- Operator Dashboard API ----
+// Operator Dashboard API
 
-// Maps a status to the timestamp column it should stamp, if any.
 function timestampForStatus(status) {
   if (status === 'assigned') return { assigned_at: new Date().toISOString() };
   if (status === 'collected') return { collected_at: new Date().toISOString() };
@@ -280,62 +376,59 @@ async function logPickupEvent(requestId, status, notes) {
   if (error) console.error('Supabase pickup_events insert error:', error);
 }
 
-// List all pickup requests, most recent first, with the assigned worker's details attached.
 app.get('/api/pickup-requests', requireDashboardKey, async (req, res) => {
   const { data, error } = await supabase
     .from('pickup_requests')
     .select('*, field_workers(id, name, phone, status)')
     .order('created_at', { ascending: false });
-
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// List field workers (for the dashboard's assignment dropdown).
 app.get('/api/field-workers', requireDashboardKey, async (req, res) => {
-  const { data, error } = await supabase
-    .from('field_workers')
-    .select('*')
-    .order('name', { ascending: true });
-
+  const { data, error } = await supabase.from('field_workers').select('*').order('name', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// Add a new field worker.
 app.post('/api/field-workers', requireDashboardKey, async (req, res) => {
   const name = (req.body?.name || '').trim();
   const phone = (req.body?.phone || '').trim();
-
   if (!name) return res.status(400).json({ error: 'name is required' });
 
   const { data, error } = await supabase
     .from('field_workers')
-    .insert({ name, phone: phone || null, status: 'active' })
+    .insert({ name, phone: phone || null, status: 'available' })
     .select()
     .maybeSingle();
-
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// Assign a field worker to a request; moves it to 'assigned' and stamps assigned_at.
+// UPDATED: Assign worker AND send WhatsApp notification
 app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const workerId = req.body?.worker_id;
 
-  if (!workerId) {
-    return res.status(400).json({ error: 'worker_id is required' });
-  }
+  if (!workerId) return res.status(400).json({ error: 'worker_id is required' });
 
   const { data: worker, error: workerError } = await supabase
     .from('field_workers')
-    .select('id, name')
+    .select('id, name, phone, status')
     .eq('id', workerId)
     .maybeSingle();
 
   if (workerError) return res.status(500).json({ error: workerError.message });
   if (!worker) return res.status(404).json({ error: 'field worker not found' });
+  if (worker.status !== 'available') return res.status(400).json({ error: 'Field worker is not available' });
+
+  const { data: request, error: reqError } = await supabase
+    .from('pickup_requests')
+    .select('patron_name, pickup_location, waste_type, estimated_volume_kg')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
 
   const { data, error } = await supabase
     .from('pickup_requests')
@@ -352,10 +445,25 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   if (error) return res.status(500).json({ error: error.message });
 
   await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
+  
+  // Set worker to busy
+  await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
+
+  // Trigger WhatsApp notification to the worker
+  if (worker.phone) {
+    await sendWhatsAppAssignment(
+      normalizePhone(worker.phone),
+      request.patron_name,
+      request.pickup_location,
+      request.waste_type,
+      request.estimated_volume_kg,
+      id
+    );
+  }
+
   res.json(data);
 });
 
-// Manually override a request's status; logs the change in pickup_events.
 app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const { status, notes } = req.body || {};
