@@ -114,3 +114,9 @@ Future development will focus on:
 4. System automatically sends a WhatsApp notification to the assigned field worker with pickup details.
 5. Field worker executes the pickup and updates the status via WhatsApp interactive buttons (e.g., `Mark Collected`).
 6. System updates the request status to `collected` and frees up the field worker for the next assignment.
+
+## Presentation & Demo Materials
+
+- **Pitch Deck:** [View or Download the Presentation PDF](./Pitch_Deck.pdf)
+- **Live Dashboard:** [Operator Dashboard](https://grow-and-feeds-crm-backend.onrender.com/dashboard.html) *(Requires API Key)*
+- **System Documentation:** See `TRADE_OFFS.md`, `BLOCKER_JOURNAL.md`, and `DEFENSE_CHEAT_SHEET.md` for architectural decisions and defense preparation.
