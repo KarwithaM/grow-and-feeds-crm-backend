@@ -101,6 +101,38 @@ async function sendWhatsAppMessage(to, message) {
      return await response.json();
 }
 
+import { OpenAI } from 'openai';
+
+// Initialize Qwen Client
+const qwenClient = new OpenAI({
+  baseURL: 'https://api-inference.modelscope.ai/v1',
+  apiKey: process.env.QWEN_API_KEY,
+});
+
+async function getAIResponse(userMessage) {
+  try {
+    const response = await qwenClient.chat.completions.create({
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful, professional assistant for Grow and Feeds Patrons, a Kenyan agribusiness that collects organic waste to create Black Soldier Fly (BSF) organic fertilizer and animal feed. Keep answers under 300 characters. Be encouraging and professional. If the user asks about waste pickup, gently remind them to reply with "Hi" to start a formal request.'
+        },
+        {
+          role: 'user',
+          content: userMessage
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 150
+    });
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error('Qwen API Error:', error);
+    return null; // Fallback to default message if AI fails
+  }
+}
+
 async function sendWhatsAppAssignment(to, patronName, location, wasteType, volume, requestId) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -341,8 +373,15 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          if (session.state !== 'greeting') {
-            await sendWhatsAppMessage(from, "It looks like our connection reset or I didn't understand. Please send 'Hi' to start a new request.");
+                    if (session.state !== 'greeting') {
+            // Try to get a smart AI response first
+            const aiReply = await getAIResponse(text);
+            
+            if (aiReply) {
+              await sendWhatsAppMessage(from, aiReply);
+            } else {
+              await sendWhatsAppMessage(from, "I did not understand that. Please send 'Hi' to start a new pickup request, or ask a question about our Black Soldier Fly processing.");
+            }
             await deleteSession(from);
           }
         }
