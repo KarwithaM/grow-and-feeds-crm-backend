@@ -188,12 +188,12 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           if (actionRequestId) {
             console.log('Field worker action detected. Request:', actionRequestId, 'Action:', text);
             
-            const { data: request, error: reqError } = await supabase
+                        const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
-              .select('id, status, worker_id, field_workers(id, phone)')
+              .select('id, status, worker_id, patron_phone, estimated_volume_kg, waste_type, field_workers(id, phone)')
               .eq('id', actionRequestId)
               .maybeSingle();
-
+            
             if (reqError || !request) {
               console.error('Request not found for button action:', actionRequestId);
               return res.status(200).send('EVENT_RECEIVED');
@@ -236,11 +236,18 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               if (updateError) {
                 console.error('Failed to update request status:', updateError);
                 await sendWhatsAppMessage(from, "FAILED TO UPDATE REQUEST. Please contact the operator.");
+                           
               } else {
                 await logPickupEvent(actionRequestId, newStatus, eventNotes);
 
                 if (request.worker_id) {
                   await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
+                }
+
+                // NEW: Notify patron when worker marks as collected
+                if (newStatus === 'collected' && request.patron_phone) {
+                  const receivedMessage = `Thank you. Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle. We will notify you once the transformation is complete.`;
+                  await sendWhatsAppMessage(request.patron_phone, receivedMessage);
                 }
 
                 const confirmMsg = newStatus === 'collected' 
