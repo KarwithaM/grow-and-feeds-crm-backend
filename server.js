@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { OpenAI } from 'openai';
 
 dotenv.config();
 
@@ -100,8 +101,6 @@ async function sendWhatsAppMessage(to, message) {
   
      return await response.json();
 }
-
-import { OpenAI } from 'openai';
 
 // Initialize Qwen Client
 const qwenClient = new OpenAI({
