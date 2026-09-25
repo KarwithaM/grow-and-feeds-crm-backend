@@ -85,6 +85,9 @@
       <button class="tab" data-filter="all">All</button>
       <button class="secondary" onclick="openAddWorker()">+ Add field worker</button>
       <button class="refresh" onclick="load()">Refresh now</button>
+            <button class="secondary" onclick="openAddWorker()">+ Add field worker</button>
+      <button class="refresh" onclick="load()">Refresh now</button>
+      <button class="secondary" onclick="generateAIReport()" style="background:#f0fdf4; border-color:#166534; color:#166534; font-weight:600;">Generate AI Impact Report</button>
     </div>
     <table>
       <thead>
@@ -341,6 +344,25 @@
   });
 
   if (getKey()) enterApp();
+
+    async function generateAIReport() {
+    document.getElementById('reportContent').textContent = 'Analyzing data and generating report...';
+    document.getElementById('reportDialog').showModal();
+    try {
+      const result = await apiFetch('/api/reports/weekly-impact');
+      document.getElementById('reportContent').textContent = result.report;
+    } catch (e) {
+      document.getElementById('reportContent').textContent = 'Error generating report: ' + e.message;
+    }
+  }
+  
 </script>
+  <dialog id="reportDialog">
+  <h3 style="margin-top:0;">Weekly AI Impact Report</h3>
+  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: #1c2b1e; background: #f4f6f4; padding: 12px; border-radius: 6px; min-height: 100px;">Analyzing data and generating report...</div>
+  <div class="actions">
+    <button class="refresh" onclick="document.getElementById('reportDialog').close()">Close</button>
+  </div>
+</dialog>
 </body>
 </html>
