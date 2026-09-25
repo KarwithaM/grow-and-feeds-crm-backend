@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Grow and Feeds — Operator Dashboard</title>
+<title>Grow and Feeds - Operator Dashboard</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -73,8 +73,8 @@
 
 <div id="app" style="display:none;">
   <header>
-    <h1>Grow and Feeds — Pickup Requests</h1>
-    <span class="status" id="lastUpdated">Loading…</span>
+    <h1>Grow and Feeds - Pickup Requests</h1>
+    <span class="status" id="lastUpdated">Loading...</span>
   </header>
   <main>
     <div class="toolbar">
@@ -109,6 +109,7 @@
   <h3 style="margin-top:0;">Add field worker</h3>
   <input id="workerNameInput" type="text" placeholder="Full name" />
   <input id="workerPhoneInput" type="text" placeholder="Phone (optional)" />
+  <input id="workerAreaInput" type="text" placeholder="Service Area (e.g., Nairobi West)" />
   <div class="error" id="workerError"></div>
   <div class="actions">
     <button class="secondary" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
@@ -117,7 +118,7 @@
 </dialog>
 
 <script>
-  const API_BASE = ''; // same-origin: dashboard.html is served by the Render app itself
+  const API_BASE = '';
   let currentFilter = 'pending';
   let pollTimer = null;
   let workers = [];
@@ -203,15 +204,17 @@
     emptyEl.style.display = 'none';
 
     const workerOptions = (selectedId) => {
-      const opts = workers.map(w =>
-        `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''}>${escapeHtml(w.name)}</option>`
-      ).join('');
-      return `<option value="">Choose worker…</option>` + opts;
+      const opts = workers.map(w => {
+        const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
+        const status = w.status === 'busy' ? ' (Busy)' : '';
+        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
+      }).join('');
+      return `<option value="">Choose worker...</option>` + opts;
     };
 
     for (const r of filtered) {
       const tr = document.createElement('tr');
-      const assignedWorker = r.field_workers; // joined via worker_id
+      const assignedWorker = r.field_workers;
 
       const statusOptions = ['pending', 'assigned', 'collected', 'processed', 'cancelled']
         .map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`)
@@ -276,6 +279,7 @@
   function openAddWorker() {
     document.getElementById('workerNameInput').value = '';
     document.getElementById('workerPhoneInput').value = '';
+    document.getElementById('workerAreaInput').value = '';
     document.getElementById('workerError').textContent = '';
     document.getElementById('addWorkerDialog').showModal();
   }
@@ -283,6 +287,8 @@
   async function submitAddWorker() {
     const name = document.getElementById('workerNameInput').value.trim();
     const phone = document.getElementById('workerPhoneInput').value.trim();
+    const area = document.getElementById('workerAreaInput').value.trim();
+    
     if (!name) {
       document.getElementById('workerError').textContent = 'Name is required.';
       return;
@@ -290,7 +296,7 @@
     try {
       await apiFetch('/api/field-workers', {
         method: 'POST',
-        body: JSON.stringify({ name, phone })
+        body: JSON.stringify({ name, phone, service_area: area || null })
       });
       document.getElementById('addWorkerDialog').close();
       await load();
