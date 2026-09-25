@@ -229,10 +229,11 @@
         <td><span class="badge ${r.status}">${r.status}</span></td>
         <td>${assignedWorker ? escapeHtml(assignedWorker.name) : '—'}</td>
         <td>
-          <div class="assign-row">
-            <select class="worker-select" data-id="${r.id}">${workerOptions(r.worker_id)}</select>
-            <button data-id="${r.id}" class="assign-btn">Assign</button>
-          </div>
+             <div class="assign-row">
+     <select class="worker-select" data-id="${r.id}">${workerOptions(r.worker_id)}</select>
+     <button data-id="${r.id}" class="assign-btn">Assign</button>
+     <button data-id="${r.id}" class="auto-assign-btn" style="background:#0284c7; border-color:#0284c7;">Auto</button>
+   </div>
           <select class="status-select" data-id="${r.id}" style="margin-top:6px;">${statusOptions}</select>
         </td>
       `;
@@ -256,6 +257,25 @@
           alert(e.message);
         } finally {
           btn.disabled = false;
+        }
+      });
+    });
+        rowsEl.querySelectorAll('.auto-assign-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        btn.textContent = 'Routing...';
+        try {
+          const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, {
+            method: 'POST'
+          });
+          alert(`Success: Assigned to ${result.worker} (${result.assignmentType})`);
+          await load();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Auto';
         }
       });
     });
