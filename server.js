@@ -98,10 +98,7 @@ async function sendWhatsAppMessage(to, message) {
     })
   });
   
-  const result = await response.json();
-  // NEW: Log the response from Meta to see if the token is expired or blocked
-  console.log('OUTBOUND META RESPONSE:', result); 
-  return result;
+     return await response.json();
 }
 
 async function sendWhatsAppAssignment(to, patronName, location, wasteType, volume, requestId) {
@@ -154,9 +151,6 @@ app.get('/api/whatsapp/webhook', (req, res) => {
 
 app.post('/api/whatsapp/webhook', async (req, res) => {
   console.log('Webhook POST received at:', new Date().toISOString());
-  
-  // NEW DEBUG LINE: This will show us exactly what Meta is sending
-  console.log('RAW PAYLOAD:', JSON.stringify(req.body));
 
   try {
     const body = req.body;
