@@ -97,7 +97,11 @@ async function sendWhatsAppMessage(to, message) {
       text: { body: message }
     })
   });
-  return response.json();
+  
+  const result = await response.json();
+  // NEW: Log the response from Meta to see if the token is expired or blocked
+  console.log('OUTBOUND META RESPONSE:', result); 
+  return result;
 }
 
 async function sendWhatsAppAssignment(to, patronName, location, wasteType, volume, requestId) {
