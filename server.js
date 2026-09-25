@@ -376,18 +376,21 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          if (session.state !== 'greeting') {
-            console.log('14. Triggering AI Fallback for text:', text);
-            const aiReply = await getAIResponse(text);
-            console.log('15. AI Reply received:', aiReply);
-            
-            if (aiReply) {
-              await sendWhatsAppMessage(from, aiReply);
-            } else {
-              await sendWhatsAppMessage(from, "I did not understand that. Please send 'Hi' to start a new pickup request, or ask a question about our Black Soldier Fly processing.");
-            }
-            await deleteSession(from);
+          // CATCH-ALL: If the message didn't match any step above, use AI fallback
+          console.log('14. Triggering AI Fallback for text:', text);
+          const aiReply = await getAIResponse(text);
+          console.log('15. AI Reply received:', aiReply);
+          
+          if (aiReply) {
+            await sendWhatsAppMessage(from, aiReply);
+          } else {
+            await sendWhatsAppMessage(from, "I did not understand that. Please send 'Hi' to start a new pickup request, or ask a question about our Black Soldier Fly processing.");
           }
+          
+          // Only reset the session if they were in the middle of a flow and went off-script
+          if (session.state !== 'greeting') {
+            await deleteSession(from);
+          }        
         }
       }
     }
