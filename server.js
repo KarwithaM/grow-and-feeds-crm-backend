@@ -640,6 +640,71 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   res.json({ success: true, worker: finalWorker.name, assignmentType });
 });
 
+// AI IMPACT REPORT GENERATOR
+app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
+  try {
+    // 1. Get date 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+
+    // 2. Fetch collected/processed requests in the last 7 days
+    const { data, error } = await supabase
+      .from('pickup_requests')
+      .select('estimated_volume_kg, waste_type, pickup_location, status')
+      .in('status', ['collected', 'processed'])
+      .gte('created_at', isoSevenDaysAgo);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    if (!data || data.length === 0) {
+      return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
+    }
+
+    // 3. Aggregate the data
+    const totalKg = data.reduce((sum, row) => sum + (row.estimated_volume_kg || 0), 0);
+    const wasteTypes = {};
+    const locations = {};
+    
+    data.forEach(row => {
+      wasteTypes[row.waste_type] = (wasteTypes[row.waste_type] || 0) + (row.estimated_volume_kg || 0);
+      locations[row.pickup_location] = (locations[row.pickup_location] || 0) + 1;
+    });
+
+    const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
+    const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
+
+    const promptData = `
+      Total completed pickups: ${data.length}
+      Total weight diverted: ${totalKg} kg
+      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+      Most active location: ${topLocation} (${locations[topLocation]} pickups)
+    `;
+
+    // 4. Send to Qwen for report generation
+    const qwenResponse = await qwenClient.chat.completions.create({
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
+        },
+        {
+          role: 'user',
+          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+
+    res.json({ report: qwenResponse.choices[0].message.content });
+  } catch (error) {
+    console.error('AI Report Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate AI report' });
+  }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Grow and Feeds Backend listening on port ${PORT}`);
