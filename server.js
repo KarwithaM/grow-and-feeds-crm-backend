@@ -181,18 +181,23 @@ app.get('/api/whatsapp/webhook', (req, res) => {
 });
 
 app.post('/api/whatsapp/webhook', async (req, res) => {
-  console.log('Webhook POST received at:', new Date().toISOString());
+  console.log('1. Webhook POST received at:', new Date().toISOString());
+  console.log('2. Request body keys:', Object.keys(req.body || {}));
 
   try {
     const body = req.body;
+    console.log('3. Body parsed, entries count:', body?.entry?.length || 0);
+
     for (const entry of body?.entry || []) {
       for (const change of entry?.changes || []) {
         for (const message of change?.value?.messages || []) {
+          console.log('4. Processing message ID:', message?.id);
+          
           const from = normalizePhone(message?.from);
           const messageId = message?.id;
 
           if (isDuplicateMessage(messageId)) {
-            console.log('Skipping duplicate delivery of message:', messageId);
+            console.log('5. Skipping duplicate delivery of message:', messageId);
             continue;
           }
 
@@ -211,28 +216,30 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             text = message?.text?.body?.trim().toLowerCase();
           }
 
+          console.log('6. Parsed FROM:', from, 'Parsed TEXT:', text, 'ActionReq:', actionRequestId);
+
           if (!from || (!text && !actionRequestId)) {
-            console.log('Skipping payload: missing from or text');
+            console.log('7. Skipping payload: missing from or text');
             continue;
           }
 
           if (actionRequestId) {
-            console.log('Field worker action detected. Request:', actionRequestId, 'Action:', text);
-            
-                        const { data: request, error: reqError } = await supabase
+            console.log('8. Field worker action detected.');
+            // ... (Keep your existing worker action logic here, no changes needed) ...
+            const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
               .select('id, status, worker_id, patron_phone, estimated_volume_kg, waste_type, field_workers(id, phone)')
               .eq('id', actionRequestId)
               .maybeSingle();
             
             if (reqError || !request) {
-              console.error('Request not found for button action:', actionRequestId);
+              console.error('9. Request not found for button action:', actionRequestId);
               return res.status(200).send('EVENT_RECEIVED');
             }
 
             const dbWorkerPhone = normalizePhone(request.field_workers?.phone);
             if (dbWorkerPhone !== from) {
-              console.log('Security Alert: Phone mismatch. Expected:', dbWorkerPhone, 'Got:', from);
+              console.log('10. Security Alert: Phone mismatch.');
               await sendWhatsAppMessage(from, "SECURITY ALERT: You are not authorized to update this request.");
               return res.status(200).send('EVENT_RECEIVED');
             }
@@ -265,35 +272,32 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                 .eq('id', actionRequestId);
 
               if (updateError) {
-                console.error('Failed to update request status:', updateError);
+                console.error('11. Failed to update request status:', updateError);
                 await sendWhatsAppMessage(from, "FAILED TO UPDATE REQUEST. Please contact the operator.");
-                           
               } else {
                 await logPickupEvent(actionRequestId, newStatus, eventNotes);
-
                 if (request.worker_id) {
                   await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
                 }
-
-                // NEW: Notify patron when worker marks as collected
                 if (newStatus === 'collected' && request.patron_phone) {
-                  const receivedMessage = `Thank you. Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle. We will notify you once the transformation is complete.`;
+                  const receivedMessage = `Thank you. Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle.`;
                   await sendWhatsAppMessage(request.patron_phone, receivedMessage);
                 }
-
                 const confirmMsg = newStatus === 'collected' 
-                  ? `SUCCESS: Pickup marked as COLLECTED.\n\nYou are now available for new assignments.`
-                  : `NOTED: Pickup marked as CANCELLED.\n\nYou are now available for new assignments.`;
+                  ? `SUCCESS: Pickup marked as COLLECTED. You are now available.`
+                  : `NOTED: Pickup marked as CANCELLED. You are now available.`;
                 await sendWhatsAppMessage(from, confirmMsg);
               }
             } else {
               await sendWhatsAppMessage(from, "INFO: This request is already in that status.");
             }
-            
             return res.status(200).send('EVENT_RECEIVED');
           }
 
+          // PATRON CONVERSATIONAL INTAKE
+          console.log('12. Fetching session for:', from);
           let session = await getSession(from);
+          console.log('13. Session state:', session.state);
 
           if (text === 'hi' || text === 'hello' || text === 'start') {
             session = { state: 'name' };
@@ -372,9 +376,10 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-                    if (session.state !== 'greeting') {
-            // Try to get a smart AI response first
+          if (session.state !== 'greeting') {
+            console.log('14. Triggering AI Fallback for text:', text);
             const aiReply = await getAIResponse(text);
+            console.log('15. AI Reply received:', aiReply);
             
             if (aiReply) {
               await sendWhatsAppMessage(from, aiReply);
@@ -386,9 +391,11 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
         }
       }
     }
+    console.log('16. Webhook processing complete, sending EVENT_RECEIVED');
     return res.status(200).send('EVENT_RECEIVED');
   } catch (error) {
-    console.error('Webhook Error:', error);
+    console.error('99. CRITICAL Webhook Error:', error);
+    console.error('99. Error Stack:', error.stack);
     return res.status(200).send('EVENT_RECEIVED');
   }
 });
