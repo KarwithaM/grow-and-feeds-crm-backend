@@ -416,9 +416,10 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   if (!worker) return res.status(404).json({ error: 'field worker not found' });
   if (worker.status !== 'available') return res.status(400).json({ error: 'Field worker is not available' });
 
+  // ADDED: patron_phone to the select list
   const { data: request, error: reqError } = await supabase
     .from('pickup_requests')
-    .select('patron_name, pickup_location, waste_type, estimated_volume_kg')
+    .select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg')
     .eq('id', id)
     .maybeSingle();
 
@@ -439,9 +440,9 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   if (error) return res.status(500).json({ error: error.message });
 
   await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
-  
   await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
 
+  // 1. Send WhatsApp notification to the worker
   if (worker.phone) {
     await sendWhatsAppAssignment(
       normalizePhone(worker.phone),
@@ -451,6 +452,12 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
       request.estimated_volume_kg,
       id
     );
+  }
+
+  // 2. ADDED: Send WhatsApp notification to the patron
+  if (request.patron_phone) {
+    const patronMessage = `Update: A collection team has been assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
+    await sendWhatsAppMessage(request.patron_phone, patronMessage);
   }
 
   res.json(data);
@@ -478,13 +485,19 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
 
   if (error) return res.status(500).json({ error: error.message });
 
-  await logPickupEvent(id, status, notes);
+   await logPickupEvent(id, status, notes);
 
-  // NEW: Notify the patron when the waste is successfully processed
-  if (status === 'processed' && data?.patron_phone) {
-    const patronMessage = `Thank you for contributing to a greener environment. Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been successfully processed into Black Soldier Fly organic fertilizer and animal feed. We appreciate your partnership with Grow and Feeds Patrons.`;
+  // ADDED: Two-Step Patron Transparency Notifications
+  if (data?.patron_phone) {
+    if (status === 'collected') {
+      const receivedMessage = `Thank you. Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle. We will notify you once the transformation is complete.`;
+      await sendWhatsAppMessage(data.patron_phone, receivedMessage);
+    }
     
-    await sendWhatsAppMessage(data.patron_phone, patronMessage);
+    if (status === 'processed') {
+      const processedMessage = `Great news! Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been successfully transformed into Black Soldier Fly organic fertilizer and animal feed. Thank you for contributing to a greener environment and supporting sustainable agriculture with Grow and Feeds Patrons.`;
+      await sendWhatsAppMessage(data.patron_phone, processedMessage);
+    }
   }
 
   res.json(data);
@@ -496,7 +509,7 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   // 1. Get the pickup request details
   const { data: request, error: reqError } = await supabase
     .from('pickup_requests')
-    .select('id, patron_name, pickup_location, waste_type, estimated_volume_kg, status')
+    .select('id, patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, status')
     .eq('id', id)
     .maybeSingle();
 
@@ -551,7 +564,7 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   // 6. Log the event
   await logPickupEvent(id, 'assigned', `Auto-assigned to ${finalWorker.name} via ${assignmentType}`);
 
-  // 7. Send WhatsApp notification to the worker
+    // 7. Send WhatsApp notification to the worker
   if (finalWorker.phone) {
     await sendWhatsAppAssignment(
       normalizePhone(finalWorker.phone),
@@ -561,6 +574,12 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
       request.estimated_volume_kg,
       id
     );
+  }
+
+  // 8. ADDED: Send WhatsApp notification to the patron
+  if (request.patron_phone) {
+    const patronMessage = `Update: A collection team has been automatically assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
+    await sendWhatsAppMessage(request.patron_phone, patronMessage);
   }
 
   res.json({ success: true, worker: finalWorker.name, assignmentType });
