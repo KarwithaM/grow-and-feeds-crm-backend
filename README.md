@@ -1,3 +1,11 @@
+## Hack for Humanity Submission
+
+**Problem:** Smallholder farmers and market vendors struggle with inconsistent, manual organic waste disposal, leading to environmental degradation and lost economic value. Simultaneously, sustainable agriculture lacks accessible, high-quality organic fertiliser and animal feed.
+
+**Solution:** Grow And Feeds Patrons is an automated, WhatsApp-based waste collection and coordination CRM. It bridges the gap between waste generators and sustainable Black Soldier Fly (BSF) processing facilities. By leveraging smart dispatch, real-time operator dashboards, and a three-step transparency notification system, we eliminate logistical friction, reduce spoilage, and build trust with rural and peri-urban communities.
+
+**Impact:** Transforms organic waste into valuable BSF larvae and frass, creating a circular economy that supports local agribusinesses while cleaning up the environment.
+
 # Grow and Feeds Patrons - Backend CRM
 
 A lightweight, production-oriented Node.js/Express backend powering the WhatsApp conversational intake and operational coordination for the **Grow and Feeds Patrons** organic waste collection system. 
