@@ -382,11 +382,18 @@ app.get('/api/field-workers', requireDashboardKey, async (req, res) => {
 app.post('/api/field-workers', requireDashboardKey, async (req, res) => {
   const name = (req.body?.name || '').trim();
   const phone = (req.body?.phone || '').trim();
+  const service_area = (req.body?.service_area || '').trim();
+
   if (!name) return res.status(400).json({ error: 'name is required' });
 
   const { data, error } = await supabase
     .from('field_workers')
-    .insert({ name, phone: phone || null, status: 'available' })
+    .insert({ 
+      name, 
+      phone: phone || null, 
+      service_area: service_area || null, 
+      status: 'available' 
+    })
     .select()
     .maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
