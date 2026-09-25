@@ -12,7 +12,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 
-// Serves /public/dashboard.html
 app.use(express.static(path.join(__dirname, 'public')));
 
 function requireDashboardKey(req, res, next) {
@@ -28,7 +27,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Message de-duplication
 const processedMessages = new Map();
 const DEDUP_TTL_MS = 10 * 60 * 1000;
 
@@ -43,7 +41,6 @@ function isDuplicateMessage(id) {
   return false;
 }
 
-// Session persistence
 async function getSession(phone) {
   const { data, error } = await supabase.from('sessions').select('*').eq('phone', phone).maybeSingle();
   if (error) { console.error('Supabase getSession error:', error); return { state: 'greeting' }; }
@@ -103,7 +100,6 @@ async function sendWhatsAppMessage(to, message) {
   return response.json();
 }
 
-// NEW: Send Interactive Assignment Message to Field Worker
 async function sendWhatsAppAssignment(to, patronName, location, wasteType, volume, requestId) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -139,7 +135,6 @@ async function sendWhatsAppAssignment(to, patronName, location, wasteType, volum
   }
 }
 
-// 1. META WEBHOOK VERIFICATION
 app.get('/api/whatsapp/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -153,9 +148,11 @@ app.get('/api/whatsapp/webhook', (req, res) => {
   return res.sendStatus(403);
 });
 
-// 2. INCOMING WHATSAPP MESSAGES
 app.post('/api/whatsapp/webhook', async (req, res) => {
   console.log('Webhook POST received at:', new Date().toISOString());
+  
+  // NEW DEBUG LINE: This will show us exactly what Meta is sending
+  console.log('RAW PAYLOAD:', JSON.stringify(req.body));
 
   try {
     const body = req.body;
@@ -170,7 +167,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // NEW: Parse Interactive Button Payloads
           let text = '';
           let actionRequestId = null;
           let btnId = '';
@@ -180,7 +176,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             btnId = message?.interactive?.button_reply?.id || '';
             if (btnId && btnId.includes('_')) {
               const parts = btnId.split('_');
-              actionRequestId = parts.slice(1).join('_'); // Extracts the UUID
+              actionRequestId = parts.slice(1).join('_');
             }
           } else {
             text = message?.text?.body?.trim().toLowerCase();
@@ -191,7 +187,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // NEW: FIELD WORKER INTERACTIVE BUTTON HANDLER
           if (actionRequestId) {
             console.log('Field worker action detected. Request:', actionRequestId, 'Action:', text);
             
@@ -206,7 +201,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               return res.status(200).send('EVENT_RECEIVED');
             }
 
-            // Security: Verify the sender's phone matches the assigned worker's phone
             const dbWorkerPhone = normalizePhone(request.field_workers?.phone);
             if (dbWorkerPhone !== from) {
               console.log('Security Alert: Phone mismatch. Expected:', dbWorkerPhone, 'Got:', from);
@@ -247,7 +241,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               } else {
                 await logPickupEvent(actionRequestId, newStatus, eventNotes);
 
-                // Release the worker
                 if (request.worker_id) {
                   await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
                 }
@@ -264,7 +257,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             return res.status(200).send('EVENT_RECEIVED');
           }
 
-          // PATRON CONVERSATIONAL INTAKE (Existing Logic)
           let session = await getSession(from);
 
           if (text === 'hi' || text === 'hello' || text === 'start') {
@@ -358,8 +350,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
   }
 });
 
-// Operator Dashboard API
-
 function timestampForStatus(status) {
   if (status === 'assigned') return { assigned_at: new Date().toISOString() };
   if (status === 'collected') return { collected_at: new Date().toISOString() };
@@ -405,7 +395,6 @@ app.post('/api/field-workers', requireDashboardKey, async (req, res) => {
   res.json(data);
 });
 
-// UPDATED: Assign worker AND send WhatsApp notification
 app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const workerId = req.body?.worker_id;
@@ -446,10 +435,8 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
 
   await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
   
-  // Set worker to busy
   await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
 
-  // Trigger WhatsApp notification to the worker
   if (worker.phone) {
     await sendWhatsAppAssignment(
       normalizePhone(worker.phone),
