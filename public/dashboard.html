@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grow and Feeds — Operator Dashboard</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; background: #f4f6f4; color: #1c2b1e;
+  }
+  header {
+    background: #1f5e2e; color: #fff; padding: 16px 24px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .status { font-size: 13px; opacity: 0.9; }
+  main { max-width: 1150px; margin: 20px auto; padding: 0 16px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 14px; border-radius: 999px; border: 1px solid #cfd8cf;
+    background: #fff; cursor: pointer; font-size: 13px;
+  }
+  .tab.active { background: #1f5e2e; color: #fff; border-color: #1f5e2e; }
+  button.refresh, button.secondary {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid #cfd8cf;
+    background: #fff; cursor: pointer; font-size: 13px;
+  }
+  button.refresh { margin-left: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #edf1ed; vertical-align: top; }
+  th { background: #eef3ee; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.pending { background: #fdecd2; color: #92600a; }
+  .badge.assigned { background: #dbeafe; color: #1e4d8c; }
+  .badge.collected { background: #e0e7ff; color: #3730a3; }
+  .badge.processed { background: #dcfce7; color: #15803d; }
+  .badge.cancelled { background: #fee2e2; color: #991b1b; }
+  .assign-row { display: flex; gap: 6px; }
+  select.worker-select, select.status-select {
+    padding: 5px 7px; border: 1px solid #cfd8cf; border-radius: 5px; font-size: 12px;
+  }
+  .assign-row button {
+    padding: 5px 9px; border-radius: 5px; border: 1px solid #1f5e2e;
+    background: #1f5e2e; color: #fff; font-size: 12px; cursor: pointer;
+  }
+  .empty { text-align: center; padding: 40px; color: #6b7a6c; font-size: 14px; }
+  #keyGate {
+    max-width: 360px; margin: 80px auto; background: #fff; padding: 24px; border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06); text-align: center;
+  }
+  #keyGate input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid #cfd8cf; border-radius: 6px; }
+  #keyGate button { padding: 8px 16px; border-radius: 6px; border: none; background: #1f5e2e; color: #fff; cursor: pointer; }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 8px; }
+  dialog { border: none; border-radius: 10px; padding: 20px; max-width: 320px; width: 90%; }
+  dialog input { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid #cfd8cf; border-radius: 6px; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div id="keyGate">
+  <h2>Operator sign-in</h2>
+  <p style="font-size:13px;color:#6b7a6c;">Enter the dashboard access key given to you.</p>
+  <input id="keyInput" type="password" placeholder="Access key" />
+  <br />
+  <button onclick="saveKey()">Continue</button>
+  <div id="keyError" class="error"></div>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <h1>Grow and Feeds — Pickup Requests</h1>
+    <span class="status" id="lastUpdated">Loading…</span>
+  </header>
+  <main>
+    <div class="toolbar">
+      <button class="tab active" data-filter="pending">Pending</button>
+      <button class="tab" data-filter="assigned">Assigned</button>
+      <button class="tab" data-filter="collected">Collected</button>
+      <button class="tab" data-filter="processed">Processed</button>
+      <button class="tab" data-filter="all">All</button>
+      <button class="secondary" onclick="openAddWorker()">+ Add field worker</button>
+      <button class="refresh" onclick="load()">Refresh now</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Waste</th>
+          <th>Volume</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Field worker</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none;">No requests in this view.</div>
+  </main>
+</div>
+
+<dialog id="addWorkerDialog">
+  <h3 style="margin-top:0;">Add field worker</h3>
+  <input id="workerNameInput" type="text" placeholder="Full name" />
+  <input id="workerPhoneInput" type="text" placeholder="Phone (optional)" />
+  <div class="error" id="workerError"></div>
+  <div class="actions">
+    <button class="secondary" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
+    <button class="refresh" onclick="submitAddWorker()">Save</button>
+  </div>
+</dialog>
+
+<script>
+  const API_BASE = ''; // same-origin: dashboard.html is served by the Render app itself
+  let currentFilter = 'pending';
+  let pollTimer = null;
+  let workers = [];
+
+  function getKey() { return localStorage.getItem('gf_dashboard_key') || ''; }
+
+  function saveKey() {
+    const val = document.getElementById('keyInput').value.trim();
+    if (!val) return;
+    localStorage.setItem('gf_dashboard_key', val);
+    document.getElementById('keyError').textContent = '';
+    enterApp();
+  }
+
+  async function enterApp() {
+    const ok = await load(true);
+    if (ok) {
+      document.getElementById('keyGate').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(load, 10000);
+    }
+  }
+
+  async function apiFetch(path, options = {}) {
+    const res = await fetch(API_BASE + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getKey(),
+        ...(options.headers || {})
+      }
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('gf_dashboard_key');
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('keyGate').style.display = 'block';
+      document.getElementById('keyError').textContent = 'Access key rejected. Try again.';
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Request failed: ' + res.status);
+    }
+    return res.json();
+  }
+
+  async function loadWorkers() {
+    try {
+      workers = await apiFetch('/api/field-workers');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function load(silent) {
+    try {
+      await loadWorkers();
+      const data = await apiFetch('/api/pickup-requests');
+      render(data);
+      document.getElementById('lastUpdated').textContent =
+        'Updated ' + new Date().toLocaleTimeString();
+      return true;
+    } catch (e) {
+      if (!silent) console.error(e);
+      return false;
+    }
+  }
+
+  function render(data) {
+    const filtered = currentFilter === 'all'
+      ? data
+      : data.filter(r => r.status === currentFilter);
+
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('emptyState');
+    rowsEl.innerHTML = '';
+
+    if (filtered.length === 0) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    const workerOptions = (selectedId) => {
+      const opts = workers.map(w =>
+        `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''}>${escapeHtml(w.name)}</option>`
+      ).join('');
+      return `<option value="">Choose worker…</option>` + opts;
+    };
+
+    for (const r of filtered) {
+      const tr = document.createElement('tr');
+      const assignedWorker = r.field_workers; // joined via worker_id
+
+      const statusOptions = ['pending', 'assigned', 'collected', 'processed', 'cancelled']
+        .map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`)
+        .join('');
+
+      tr.innerHTML = `
+        <td>${escapeHtml(r.patron_name || '')}</td>
+        <td>${escapeHtml(r.patron_phone || '')}</td>
+        <td>${escapeHtml(r.waste_type || '')}</td>
+        <td>${r.estimated_volume_kg ?? ''} kg</td>
+        <td>${escapeHtml(r.pickup_location || '')}</td>
+        <td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${assignedWorker ? escapeHtml(assignedWorker.name) : '—'}</td>
+        <td>
+          <div class="assign-row">
+            <select class="worker-select" data-id="${r.id}">${workerOptions(r.worker_id)}</select>
+            <button data-id="${r.id}" class="assign-btn">Assign</button>
+          </div>
+          <select class="status-select" data-id="${r.id}" style="margin-top:6px;">${statusOptions}</select>
+        </td>
+      `;
+      rowsEl.appendChild(tr);
+    }
+
+    rowsEl.querySelectorAll('.assign-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const select = rowsEl.querySelector(`.worker-select[data-id="${id}"]`);
+        const workerId = select.value;
+        if (!workerId) return;
+        btn.disabled = true;
+        try {
+          await apiFetch(`/api/pickup-requests/${id}/assign`, {
+            method: 'PATCH',
+            body: JSON.stringify({ worker_id: workerId })
+          });
+          await load();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    rowsEl.querySelectorAll('.status-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const id = sel.dataset.id;
+        try {
+          await apiFetch(`/api/pickup-requests/${id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: sel.value })
+          });
+          await load();
+        } catch (e) {
+          alert(e.message);
+        }
+      });
+    });
+  }
+
+  function openAddWorker() {
+    document.getElementById('workerNameInput').value = '';
+    document.getElementById('workerPhoneInput').value = '';
+    document.getElementById('workerError').textContent = '';
+    document.getElementById('addWorkerDialog').showModal();
+  }
+
+  async function submitAddWorker() {
+    const name = document.getElementById('workerNameInput').value.trim();
+    const phone = document.getElementById('workerPhoneInput').value.trim();
+    if (!name) {
+      document.getElementById('workerError').textContent = 'Name is required.';
+      return;
+    }
+    try {
+      await apiFetch('/api/field-workers', {
+        method: 'POST',
+        body: JSON.stringify({ name, phone })
+      });
+      document.getElementById('addWorkerDialog').close();
+      await load();
+    } catch (e) {
+      document.getElementById('workerError').textContent = e.message;
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      load();
+    });
+  });
+
+  if (getKey()) enterApp();
+</script>
+</body>
+</html>
