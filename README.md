@@ -74,23 +74,24 @@ To run this project, you must configure the following environment variables (e.g
 ## Local Setup & Installation
 
 1. **Clone the repository:**
-   git clone https://github.com/KarwithaM/grow-and-feeds-crm-backend.git
-   cd grow-and-feeds-crm-backend
+   `git clone https://github.com/KarwithaM/grow-and-feeds-crm-backend.git`
+   `cd grow-and-feeds-crm-backend`
 
 2. **Install dependencies:**
-   npm install
+   `npm install`
 
 3. **Configure environment variables:**
-   Create a .env file in the root directory and add the variables listed in the Environment Variables section above.
+   Create a `.env` file in the root directory and add the variables listed in the Environment Variables section above.
 
 4. **Run the development server:**
-   npm run dev
+   `npm run dev`
 
 ## Deployment
 
 This application is deployed on Render via continuous deployment from the main branch on GitHub.
-- Build Command: npm install
-- Start Command: npm start
+- Build Command: `npm install`
+- Start Command: `npm start`
+
 Note: Because this runs on Render's free tier, the server may spin down after periods of inactivity. An external uptime monitor (like UptimeRobot) is recommended to keep the webhook responsive.
 
 ## Current Limitations
@@ -101,9 +102,10 @@ Note: Because this runs on Render's free tier, the server may spin down after pe
 ## Next System Increments
 
 Future development will focus on:
-- **Dashboard Search and Filtering**: Adding operational visibility features to filter requests by date, status, waste type, or location.
-- **Operational Metrics**: Adding reporting dashboards (e.g., total kg collected per week, top service areas).
+
 - **Permanent Meta Access Token and Live Mode**: Transitioning to a permanent System User Access Token and promoting the app to remove test-number restrictions.
+- **SMS Fallback Integration**: Adding Africa's Talking SMS API as a backup communication channel for field workers in low-connectivity areas.
+- **Advanced Historical Analytics**: Expanding the AI reporting to include month-over-month growth trends and predictive volume forecasting.
 
 ## Field Worker Workflow (Logistics)
 1. Operator views `pending` requests on the secure Operator Dashboard.
