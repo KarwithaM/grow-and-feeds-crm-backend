@@ -254,11 +254,12 @@
     }
     emptyEl.style.display = 'none';
 
-    const workerOptions = (selectedId) => {
+        const workerOptions = (selectedId) => {
       const opts = workers.map(w => {
         const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
         const status = w.status === 'busy' ? ' (Busy)' : '';
-        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
+        const freeAction = w.status === 'busy' ? ` <a href="#" onclick="freeWorker('${w.id}', '${escapeHtml(w.name)}'); return false;" style="color:#0284c7; font-size:11px; margin-left:4px;">[Free]</a>` : '';
+        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>${freeAction}`;
       }).join('');
       return `<option value="">Choose worker...</option>` + opts;
     };
