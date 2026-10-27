@@ -410,6 +410,16 @@
   }
 
   if (getKey()) enterApp();
+
+    async function freeWorker(workerId, workerName) {
+    if (!confirm(`Are you sure you want to manually free ${workerName}? This will mark them as available.`)) return;
+    try {
+      await apiFetch(`/api/field-workers/${workerId}/reset`, { method: 'PATCH' });
+      await load();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 </script>
 </body>
 </html>
