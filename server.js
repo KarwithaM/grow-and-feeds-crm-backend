@@ -705,6 +705,21 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   }
 });
 
+// ADMIN OVERRIDE: Manually reset a field worker to available
+app.patch('/api/field-workers/:id/reset', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  
+  const { data, error } = await supabase
+    .from('field_workers')
+    .update({ status: 'available' })
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Grow and Feeds Backend listening on port ${PORT}`);
