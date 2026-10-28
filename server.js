@@ -99,10 +99,9 @@ async function sendWhatsAppMessage(to, message) {
     })
   });
   
-     return await response.json();
+  return await response.json();
 }
 
-// Initialize Qwen Client
 const qwenClient = new OpenAI({
   baseURL: 'https://api-inference.modelscope.ai/v1',
   apiKey: process.env.QWEN_API_KEY,
@@ -128,7 +127,7 @@ async function getAIResponse(userMessage) {
     return response.choices[0].message.content;
   } catch (error) {
     console.error('Qwen API Error:', error);
-    return null; // Fallback to default message if AI fails
+    return null;
   }
 }
 
@@ -225,7 +224,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
           if (actionRequestId) {
             console.log('8. Field worker action detected.');
-            // ... (Keep your existing worker action logic here, no changes needed) ...
             const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
               .select('id, status, worker_id, patron_phone, estimated_volume_kg, waste_type, field_workers(id, phone)')
@@ -294,7 +292,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             return res.status(200).send('EVENT_RECEIVED');
           }
 
-          // PATRON CONVERSATIONAL INTAKE
           console.log('12. Fetching session for:', from);
           let session = await getSession(from);
           console.log('13. Session state:', session.state);
@@ -376,7 +373,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // CATCH-ALL: If the message didn't match any step above, use AI fallback
           console.log('14. Triggering AI Fallback for text:', text);
           const aiReply = await getAIResponse(text);
           console.log('15. AI Reply received:', aiReply);
@@ -387,7 +383,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             await sendWhatsAppMessage(from, "I did not understand that. Please send 'Hi' to start a new pickup request, or ask a question about our Black Soldier Fly processing.");
           }
           
-          // Only reset the session if they were in the middle of a flow and went off-script
           if (session.state !== 'greeting') {
             await deleteSession(from);
           }        
@@ -479,7 +474,6 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
 
   if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
 
-  // FREE OLD WORKER IF REASSIGNING
   if (request.worker_id && request.worker_id !== workerId) {
     await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
     await logPickupEvent(id, 'reassigned', `Reassigned from previous worker to ${worker.name}`);
@@ -522,53 +516,6 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   res.json(data);
 });
 
-  // ADDED: patron_phone to the select list
-  const { data: request, error: reqError } = await supabase
-    .from('pickup_requests')
-    .select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
-
-  const { data, error } = await supabase
-    .from('pickup_requests')
-    .update({
-      worker_id: workerId,
-      status: 'assigned',
-      updated_at: new Date().toISOString(),
-      ...timestampForStatus('assigned')
-    })
-    .eq('id', id)
-    .select('*, field_workers(id, name, phone, status)')
-    .maybeSingle();
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
-  await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
-
-  // 1. Send WhatsApp notification to the worker
-  if (worker.phone) {
-    await sendWhatsAppAssignment(
-      normalizePhone(worker.phone),
-      request.patron_name,
-      request.pickup_location,
-      request.waste_type,
-      request.estimated_volume_kg,
-      id
-    );
-  }
-
-  // 2. ADDED: Send WhatsApp notification to the patron
-  if (request.patron_phone) {
-    const patronMessage = `Update: A collection team has been assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
-    await sendWhatsAppMessage(request.patron_phone, patronMessage);
-  }
-
-  res.json(data);
-});
-
 app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const { status, notes } = req.body || {};
@@ -591,9 +538,8 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
 
   if (error) return res.status(500).json({ error: error.message });
 
-   await logPickupEvent(id, status, notes);
+  await logPickupEvent(id, status, notes);
 
-  // ADDED: Two-Step Patron Transparency Notifications
   if (data?.patron_phone) {
     if (status === 'collected') {
       const receivedMessage = `Thank you. Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle. We will notify you once the transformation is complete.`;
@@ -608,11 +554,10 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
 
   res.json(data);
 });
-// SMART DISPATCH: Auto-assign a worker based on service area matching
+
 app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
 
-  // 1. Get the pickup request details
   const { data: request, error: reqError } = await supabase
     .from('pickup_requests')
     .select('id, patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, status')
@@ -622,8 +567,6 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
   if (request.status !== 'pending') return res.status(400).json({ error: 'Request is not pending' });
 
-  // 2. Find an available worker whose service area matches the pickup location
-  // We use ilike for case-insensitive partial matching (e.g., "Nairobi West" matches "nairobi west")
   const { data: matchedWorker, error: matchError } = await supabase
     .from('field_workers')
     .select('*')
@@ -631,7 +574,6 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
     .ilike('service_area', `%${request.pickup_location}%`)
     .maybeSingle();
 
-  // 3. Fallback: If no area match, find ANY available worker
   let finalWorker = matchedWorker;
   let assignmentType = 'Area Match';
   
@@ -649,7 +591,6 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
     return res.status(400).json({ error: 'No available workers found in the system' });
   }
 
-  // 4. Perform the assignment (update request and worker status)
   const { data: updatedRequest, error: updateError } = await supabase
     .from('pickup_requests')
     .update({
@@ -664,13 +605,10 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
 
   if (updateError) return res.status(500).json({ error: updateError.message });
 
-  // 5. Mark worker as busy
   await supabase.from('field_workers').update({ status: 'busy' }).eq('id', finalWorker.id);
 
-  // 6. Log the event
   await logPickupEvent(id, 'assigned', `Auto-assigned to ${finalWorker.name} via ${assignmentType}`);
 
-    // 7. Send WhatsApp notification to the worker
   if (finalWorker.phone) {
     await sendWhatsAppAssignment(
       normalizePhone(finalWorker.phone),
@@ -682,7 +620,6 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
     );
   }
 
-  // 8. ADDED: Send WhatsApp notification to the patron
   if (request.patron_phone) {
     const patronMessage = `Update: A collection team has been automatically assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
     await sendWhatsAppMessage(request.patron_phone, patronMessage);
@@ -691,15 +628,12 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   res.json({ success: true, worker: finalWorker.name, assignmentType });
 });
 
-// AI IMPACT REPORT GENERATOR
 app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   try {
-    // 1. Get date 7 days ago
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const isoSevenDaysAgo = sevenDaysAgo.toISOString();
 
-    // 2. Fetch collected/processed requests in the last 7 days
     const { data, error } = await supabase
       .from('pickup_requests')
       .select('estimated_volume_kg, waste_type, pickup_location, status')
@@ -712,7 +646,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
     }
 
-    // 3. Aggregate the data
     const totalKg = data.reduce((sum, row) => sum + (row.estimated_volume_kg || 0), 0);
     const wasteTypes = {};
     const locations = {};
@@ -732,7 +665,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
-    // 4. Send to Qwen for report generation
     const qwenResponse = await qwenClient.chat.completions.create({
       model: 'Qwen-Ambassador/Qwen3.7-Max',
       messages: [
@@ -756,22 +688,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   }
 });
 
-// ADMIN OVERRIDE: Manually reset a field worker to available
-app.patch('/api/field-workers/:id/reset', requireDashboardKey, async (req, res) => {
-  const { id } = req.params;
-  
-  const { data, error } = await supabase
-    .from('field_workers')
-    .update({ status: 'available' })
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-// GENERAL UPDATE: Handle payment and facility delivery updates
 app.patch('/api/pickup-requests/:id/update', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const { payment_received, delivered_to_facility, delivery_facility } = req.body || {};
