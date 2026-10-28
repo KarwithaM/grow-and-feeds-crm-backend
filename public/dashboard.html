@@ -260,7 +260,6 @@
   const wasteEmojis = { 'processing': '', 'market': '', 'restaurant': '️', 'household': '', 'agriculture': '', 'institutional': '' };
   const statusToStep = { 'pending': 0, 'assigned': 1, 'collected': 3, 'processed': 5, 'cancelled': -1 };
 
-  // Vehicle emoji mapping - UPDATED
   const vehicleEmojis = { 
     'handcart': '🛺', 
     'pickup': '🛻', 
@@ -268,7 +267,6 @@
     'trailer': '🚍' 
   };
 
-  // Nairobi Zones Coordinates
   const nairobiZones = {
     'city park market': { lat: -1.2700, lng: 36.8200 },
     'marikiti': { lat: -1.2850, lng: 36.8250 },
@@ -299,14 +297,13 @@
     'kabiria': { lat: -1.2800, lng: 36.7200 }
   };
 
-  // Facility Hubs
   const facilities = [
     { name: 'Korogocho BSF Hub', locationKey: 'korogocho' },
     { name: 'City Park BSF Hub', locationKey: 'city park market' },
     { name: 'Kibera BSF Hub', locationKey: 'kibera' }
   ];
 
-    // Mock Drivers - One vehicle per zone, all with full details
+  // UPDATED: One vehicle per zone, removed duplicate Mutuini driver
   const mockDrivers = [
     // NORTH NAIROBI
     { id: 'mock-n1', name: 'James Mwangi', service_area: 'Kasarani', vehicle_type: 'handcart', vehicle_plate: 'KCA 101A', status: 'available' },
@@ -323,18 +320,16 @@
     { id: 'mock-e2', name: 'Henry Kibet', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 801M', status: 'available' },
     { id: 'mock-e3', name: 'Jacob Chebet', service_area: 'Embakasi', vehicle_type: 'mini_truck', vehicle_plate: 'KCI 901O', status: 'available' },
     
-    // WEST NAIROBI (one vehicle per zone)
+    // WEST NAIROBI (Exactly one vehicle per zone)
     { id: 'mock-w1', name: 'Leonard Bett', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 112Q', status: 'available' },
     { id: 'mock-w2', name: 'Martin Kosgei', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 221R', status: 'available' },
     { id: 'mock-w3', name: 'Oscar Kipchoge', service_area: 'Kabiria', vehicle_type: 'mini_truck', vehicle_plate: 'KCL 331T', status: 'available' },
     { id: 'mock-w4', name: 'Grace Wanjiku', service_area: 'Kileleshwa', vehicle_type: 'mini_truck', vehicle_plate: 'KCN 551V', status: 'available' },
-    { id: 'mock-w5', name: 'Robert Kiprop', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCO 661W', status: 'available' },
     
     // CENTRAL NAIROBI
     { id: 'mock-c1', name: 'Paul Maina', service_area: 'Ngara', vehicle_type: 'trailer', vehicle_plate: 'KCM 441U', status: 'available' }
   ];
-  
-  // Custom Icons - UPDATED
+
   const facilityIcon = L.divIcon({
     className: 'custom-facility-icon',
     html: '<div style="font-size: 36px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">🏭</div>',
@@ -378,7 +373,6 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add Facility Markers - FIXED: Added emoji to icon
     facilities.forEach(fac => {
       const zone = nairobiZones[fac.locationKey];
       if (zone) {
@@ -481,10 +475,10 @@
     return res.json();
   }
 
+  // UPDATED: Only use mockDrivers, removing real workers (Stacy, Festus, Toto, etc.) from view
   async function load(silent) {
     try {
-      const realWorkers = await apiFetch('/api/field-workers');
-      workers = [...realWorkers, ...mockDrivers];
+      workers = [...mockDrivers];
       currentData = await apiFetch('/api/pickup-requests');
       render(currentData);
       return true;
