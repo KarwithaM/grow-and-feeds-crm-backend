@@ -6,154 +6,252 @@
 <title>Grow And Feeds Patrons - Command Center</title>
 <style>
   :root {
-    --primary: #0F3D3A;
-    --secondary: #F4B13B;
-    --tertiary: #E0745E;
-    --bg: #F2E6D6;
+    /* Phase 2 Palette applied to Phase 1 Layout */
+    --primary: #0F3D3A; /* Deep Forest */
+    --primary-light: #1A5C57;
+    --secondary: #F4B13B; /* Golden Hour */
+    --tertiary: #E0745E; /* Terracotta */
+    --bg: #F2E6D6; /* Warm Sand */
     --card-bg: #FFFFFF;
     --text-main: #223300;
     --text-muted: #6B7280;
     --border: #E5E7EB;
+    --sidebar-bg: #0F3D3A;
   }
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
+  /* Qwen-style Collapsible Sidebar */
   .sidebar {
-    width: 64px; background: var(--primary); color: #fff;
-    display: flex; flex-direction: column; align-items: center; padding: 16px 0;
+    width: 80px; background: var(--sidebar-bg); color: #fff;
+    display: flex; flex-direction: column; align-items: center; padding: 20px 0;
     transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
   }
-  .sidebar.expanded { width: 240px; align-items: flex-start; padding: 16px 20px; }
-  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; cursor: pointer; }
-  .sidebar-header img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-  .sidebar-header h2 { font-size: 14px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sidebar.expanded { width: 260px; align-items: flex-start; padding: 20px 24px; }
+  
+  .sidebar-header { 
+    display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; 
+    cursor: pointer; justify-content: center;
+  }
+  .sidebar.expanded .sidebar-header { justify-content: flex-start; }
+  .sidebar-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #fff; }
+  .sidebar-header h2 { font-size: 15px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; line-height: 1.2; }
   .sidebar.expanded .sidebar-header h2 { opacity: 1; }
   
   .nav-item {
-    display: flex; align-items: center; gap: 16px; padding: 12px; width: 100%;
+    display: flex; align-items: center; gap: 16px; padding: 12px 16px; width: 100%;
     border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
     margin-bottom: 8px; color: rgba(255,255,255,0.7); transition: all 0.2s;
+    justify-content: center;
   }
+  .sidebar.expanded .nav-item { justify-content: flex-start; }
   .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
-  .nav-icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+  .nav-icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
   .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
   .sidebar.expanded .nav-text { opacity: 1; }
-
-  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .top-bar { background: var(--card-bg); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-  .top-bar h1 { font-size: 20px; font-weight: 700; color: var(--primary); }
-  .top-bar-actions { display: flex; gap: 12px; align-items: center; }
   
-  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .sidebar-footer { 
+    margin-top: auto; padding-top: 20px; font-size: 11px; color: rgba(255,255,255,0.5); 
+    text-align: center; opacity: 0; transition: opacity 0.2s; width: 100%;
+  }
+  .sidebar.expanded .sidebar-footer { opacity: 1; }
+
+  /* Main Content */
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* Top Bar */
+  .top-bar {
+    background: var(--card-bg); padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 20px; }
+  .top-bar h1 { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .search-box {
+    padding: 10px 18px; border: 1px solid var(--border); border-radius: 24px;
+    font-size: 13px; width: 280px; outline: none; background: var(--bg);
+  }
+  .top-bar-actions { display: flex; gap: 12px; }
+  
+  .btn {
+    padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+  }
   .btn-primary { background: var(--primary); color: #fff; }
-  .btn-primary:hover { background: #0a2a28; }
-  .btn-accent { background: var(--secondary); color: var(--primary); }
-  .btn-accent:hover { background: #d99a2a; }
+  .btn-primary:hover { background: var(--primary-light); }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
   .btn-outline:hover { background: var(--bg); }
+  .btn-accent { background: var(--secondary); color: var(--primary); }
+  .btn-accent:hover { background: #d99a2a; }
+  .btn-reassign { background: #8B5A2B; color: #fff; } /* Earthy brown for reassign */
+  .btn-reassign:hover { background: #6d4620; }
 
-  .filters-row { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; padding: 0 32px; }
-  .filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; outline: none; }
-  .filter-select:focus { border-color: var(--primary); }
-
+  /* Dashboard Content */
   .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
   
-  .shipments-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-  .shipment-card {
-    background: var(--card-bg); border-radius: 16px; padding: 20px;
-    box-shadow: 0 10px 25px rgba(15, 61, 58, 0.08); border: 1px solid rgba(15, 61, 58, 0.05);
-    display: flex; flex-direction: column; gap: 16px; transition: transform 0.2s;
+  .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
+  .filter-select {
+    padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; background: #fff; outline: none; cursor: pointer; font-weight: 500;
   }
-  .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(15, 61, 58, 0.12); }
-  
-  .shipment-card.status-pending { border-top: 4px solid var(--secondary); }
-  .shipment-card.status-assigned { border-top: 4px solid var(--primary); }
-  .shipment-card.status-collected { border-top: 4px solid #8B5CF6; }
-  .shipment-card.status-processed { border-top: 4px solid #10B981; }
-  .shipment-card.status-cancelled { border-top: 4px solid var(--tertiary); }
 
+  .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .section-title::before { content: ''; width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; }
+
+  /* Phase 1 Floating Cards Layout */
+  .shipments-list { display: flex; flex-direction: column; gap: 20px; }
+  
+  .shipment-card {
+    background: var(--card-bg); border-radius: 16px; padding: 24px;
+    box-shadow: 0 4px 20px rgba(15, 61, 58, 0.06); border: 1px solid rgba(15, 61, 58, 0.05);
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .waste-emoji { font-size: 24px; background: var(--bg); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
-  .card-title h4 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
-  .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-  .status-badge.pending { background: #FEF3C7; color: #92400E; }
-  .status-badge.assigned { background: #D1FAE5; color: #065F46; }
-  .status-badge.collected { background: #EDE9FE; color: #5B21B6; }
-  .status-badge.processed { background: #D1FAE5; color: #065F46; }
-  .status-badge.cancelled { background: #FEE2E2; color: #991B1B; }
-
-  .card-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
-  .detail-item label { display: block; font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px; }
+  .card-title-group { display: flex; align-items: center; gap: 16px; }
   
-  .card-actions { display: flex; gap: 8px; margin-top: auto; }
-  .card-actions select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; outline: none; }
-  .card-actions select:focus { border-color: var(--primary); }
+  .waste-icon-box {
+    width: 48px; height: 48px; border-radius: 12px; background: #ECFDF5;
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  
+  .card-title h4 { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; text-transform: capitalize; }
+  .card-title p { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  
+  .status-badge {
+    padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  }
+  .status-badge.pending { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+  .status-badge.assigned { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
+  .status-badge.collected { background: #F5F3FF; color: #5B21B6; border: 1px solid #DDD6FE; }
+  .status-badge.processed { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+  .status-badge.cancelled { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
 
+  .card-details-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 8px; }
+  .detail-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
+  .detail-item span { font-size: 15px; font-weight: 600; color: var(--text-main); text-transform: capitalize; }
+
+  /* Timeline */
+  .timeline-container { padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 10px; }
+  .timeline-track::before { content: ''; position: absolute; top: 7px; left: 0; right: 0; height: 3px; background: var(--border); z-index: 0; border-radius: 2px; }
+  .timeline-progress { position: absolute; top: 7px; left: 0; height: 3px; background: var(--primary); z-index: 1; transition: width 0.4s ease; border-radius: 2px; }
+  .timeline-dot {
+    width: 17px; height: 17px; border-radius: 50%; background: var(--border); border: 3px solid #fff;
+    z-index: 2; position: relative; box-shadow: 0 0 0 1px var(--border); transition: all 0.3s ease;
+  }
+  .timeline-dot.active { background: var(--primary); box-shadow: 0 0 0 3px #D1FAE5; border-color: var(--primary); }
+  .timeline-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+
+  /* Card Actions Footer */
+  .card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .checkbox-group { display: flex; gap: 16px; }
+  .custom-checkbox {
+    display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer;
+    padding: 8px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-weight: 500;
+  }
+  .custom-checkbox input { margin: 0; cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary); }
+  
+  .action-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .worker-select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 200px; outline: none; font-weight: 500; }
+  .btn-sm { padding: 8px 14px; font-size: 12px; }
+
+  /* Login Gate */
   #keyGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-  .gate-box { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+  .gate-box { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
   .gate-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; object-fit: cover; }
-  .gate-box input { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
-  .gate-box input:focus { border-color: var(--primary); }
-
-  dialog { border: none; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-  dialog input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid var(--border); border-radius: 6px; outline: none; }
-  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); grid-column: 1 / -1; }
+  .gate-box input { width: 100%; padding: 12px; margin: 16px 0; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+  
+  dialog { border: none; border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+  dialog input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+  dialog .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
 </style>
 </head>
 <body>
 
+<!-- Login Gate -->
 <div id="keyGate">
   <div class="gate-box">
     <img src="logo.png" alt="Logo">
-    <h2 style="color: var(--primary); margin-bottom: 20px;">Grow And Feeds Patrons</h2>
-    <input id="keyInput" type="password" placeholder="Access Key" />
-    <button class="btn btn-primary" style="width:100%;" onclick="saveKey()">Enter Command Center</button>
-    <div id="keyError" style="color: #DC2626; font-size: 13px; margin-top: 12px;"></div>
+    <h2 style="color: var(--primary); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Grow And Feeds Patrons</h2>
+    <p style="font-size:14px; color:var(--text-muted); margin-bottom: 28px;">Operator Command Center</p>
+    <input id="keyInput" type="password" placeholder="Enter Access Key" />
+    <button class="btn btn-primary" style="width:100%; padding: 14px; justify-content: center; font-size: 14px;" onclick="saveKey()">Access Dashboard</button>
+    <div id="keyError" style="color: #DC2626; font-size: 13px; margin-top: 16px; font-weight: 600;"></div>
   </div>
 </div>
 
+<!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header" onclick="toggleSidebar()">
     <img src="logo.png" alt="Logo">
-    <h2>Grow And Feeds Patrons</h2>
+    <h2>Grow And Feeds<br>Patrons</h2>
   </div>
-  <div class="nav-item active"><svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span class="nav-text">Dashboard</span></div>
-  <div class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="nav-text">Live Map</span></div>
-  <div class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-text">Workers</span></div>
+  <div class="nav-item active">
+    <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span class="nav-text">Dashboard</span>
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span class="nav-text">Live Map</span>
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="nav-text">Field Workers</span>
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    <span class="nav-text">Inventory</span>
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="nav-text">Reports</span>
+  </div>
+  <div class="sidebar-footer">v1.0.0 • Command Center<br>Grow More Feed Better</div>
 </aside>
 
+<!-- Main Content -->
 <main class="main-content" id="app" style="display:none;">
   <header class="top-bar">
-    <h1>Operations Dashboard</h1>
+    <div class="top-bar-left">
+      <h1>Operations Dashboard</h1>
+    </div>
     <div class="top-bar-actions">
-      <button class="btn btn-accent" onclick="generateAIReport()">AI Report</button>
-      <button class="btn btn-outline" onclick="openAddWorker()">+ Add Worker</button>
-      <button class="btn btn-primary" onclick="load()">Refresh</button>
+      <input type="text" class="search-box" placeholder="Search patrons, locations..." id="searchBox" onkeyup="handleSearch()" />
+      <button class="btn btn-outline" onclick="load()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-accent" onclick="generateAIReport()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        AI Report
+      </button>
+      <button class="btn btn-primary" onclick="openAddWorker()">+ Add Worker</button>
     </div>
   </header>
 
-  <div class="filters-row">
-    <select id="statusFilter" class="filter-select" onchange="updateFilters()">
-      <option value="all">All Statuses</option>
-      <option value="pending">Pending</option>
-      <option value="assigned">Assigned</option>
-      <option value="collected">Collected</option>
-      <option value="processed">Processed</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-    <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
-    <select id="wasteFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
-  </div>
-
   <div class="dashboard-scroll">
+    <div class="filters-row">
+      <select id="statusFilter" class="filter-select" onchange="updateFilters()">
+        <option value="all">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="assigned">Assigned</option>
+        <option value="collected">Collected</option>
+        <option value="processed">Processed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
+      <select id="wasteFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
+    </div>
+
+    <div class="section-title">Active Shipments & Requests</div>
     <div id="shipmentsList" class="shipments-list"></div>
-    <div id="emptyState" class="empty-state" style="display:none;">No shipments match your filters.</div>
+    <div id="emptyState" style="text-align: center; padding: 60px; color: var(--text-muted); display:none;">No shipments match your filters.</div>
   </div>
 </main>
 
+<!-- Dialogs -->
 <dialog id="addWorkerDialog">
   <h3 style="margin-top:0; color: var(--primary);">Add Field Worker</h3>
   <input id="workerNameInput" type="text" placeholder="Full Name" />
@@ -162,13 +260,13 @@
   <div id="workerError" style="color: #DC2626; font-size: 13px;"></div>
   <div class="actions">
     <button class="btn btn-outline" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
-    <button class="btn btn-primary" onclick="submitAddWorker()">Save</button>
+    <button class="btn btn-primary" onclick="submitAddWorker()">Save Worker</button>
   </div>
 </dialog>
 
 <dialog id="reportDialog">
   <h3 style="margin-top:0; color: var(--primary);">Weekly AI Impact Report</h3>
-  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; background: var(--bg); padding: 16px; border-radius: 8px; min-height: 120px; border: 1px solid var(--border);">Analyzing...</div>
+  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--bg); padding: 20px; border-radius: 10px; min-height: 140px; border: 1px solid var(--border);">Analyzing...</div>
   <div class="actions">
     <button class="btn btn-primary" onclick="document.getElementById('reportDialog').close()">Close</button>
   </div>
@@ -179,61 +277,52 @@
   let currentFilter = 'all';
   let locationFilter = 'all';
   let wasteFilter = 'all';
+  let searchQuery = '';
   let workers = [];
-  const wasteEmojis = { 'processing': '🏭', 'market': '🛒', 'restaurant': '️', 'household': '🏠', 'agriculture': '🌾', 'institutional': '🏫' };
+  
+  // Emojis for the 6 waste categories
+  const wasteEmojis = { 
+    'processing': '🏭', 
+    'market': '🛒', 
+    'restaurant': '🍽️', 
+    'household': '🏠', 
+    'agriculture': '🌾', 
+    'institutional': '🏫',
+    'fruit_veg': '🥗', // Legacy support
+    'crop_residue': '🍂',
+    'manure': '💩'
+  };
 
   function getKey() { return localStorage.getItem('gf_key') || ''; }
-  
   function saveKey() {
-    console.log('saveKey called');
     const val = document.getElementById('keyInput').value.trim();
-    console.log('Key value:', val ? 'present' : 'empty');
-    if (!val) {
-      document.getElementById('keyError').textContent = 'Please enter a key';
-      return;
-    }
+    if (!val) return;
     localStorage.setItem('gf_key', val);
-    document.getElementById('keyError').textContent = '';
-    console.log('Key saved, calling enterApp');
     enterApp();
   }
   
   async function enterApp() {
-    console.log('enterApp called');
-    try {
-      const ok = await load(true);
-      console.log('load result:', ok);
-      if (ok) {
-        document.getElementById('keyGate').style.display = 'none';
-        document.getElementById('app').style.display = 'flex';
-        document.getElementById('sidebar').style.display = 'flex';
-      } else {
-        document.getElementById('keyError').textContent = 'Invalid key or server error';
-      }
-    } catch (e) {
-      console.error('enterApp error:', e);
-      document.getElementById('keyError').textContent = 'Error: ' + e.message;
+    const ok = await load(true);
+    if (ok) {
+      document.getElementById('keyGate').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.getElementById('sidebar').style.display = 'flex';
+    } else {
+      document.getElementById('keyError').textContent = 'Invalid key or server error. Please check console.';
     }
   }
 
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('expanded');
   }
-  
+
   async function apiFetch(path, opts = {}) {
     const res = await fetch(API_BASE + path, {
       ...opts,
       headers: { 'Content-Type': 'application/json', 'x-api-key': getKey(), ...(opts.headers || {}) }
     });
-    if (res.status === 401) {
-      localStorage.removeItem('gf_key');
-      location.reload();
-      throw new Error('Unauthorized');
-    }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Request failed');
-    }
+    if (res.status === 401) { localStorage.removeItem('gf_key'); location.reload(); throw new Error('Unauthorized'); }
+    if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body.error || 'Request failed'); }
     return res.json();
   }
 
@@ -243,13 +332,16 @@
       const data = await apiFetch('/api/pickup-requests');
       render(data);
       return true;
-    } catch (e) {
-      if (!silent) {
-        console.error(e);
-        alert('Failed to load data: ' + e.message);
-      }
-      return false;
+    } catch (e) { 
+      if (!silent) console.error(e); 
+      return false; 
     }
+  }
+
+  function handleSearch() {
+    searchQuery = document.getElementById('searchBox').value.toLowerCase();
+    const data = JSON.parse(document.getElementById('shipmentsList').dataset.currentData || '[]');
+    render(data);
   }
 
   function updateFilters() {
@@ -260,88 +352,128 @@
   }
 
   function render(data) {
-    const container = document.getElementById('shipmentsList');
-    const emptyEl = document.getElementById('emptyState');
-    container.innerHTML = '';
-
+    document.getElementById('shipmentsList').dataset.currentData = JSON.stringify(data);
     let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
     if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
     if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
+    if (searchQuery) filtered = filtered.filter(r => (r.patron_name || '').toLowerCase().includes(searchQuery) || (r.pickup_location || '').toLowerCase().includes(searchQuery));
 
+    // Populate filters
     const locSelect = document.getElementById('locationFilter');
     const wasteSelect = document.getElementById('wasteFilter');
     if (locSelect.options.length <= 1) {
       [...new Set(data.map(r => r.pickup_location).filter(Boolean))].forEach(loc => {
-        const opt = document.createElement('option');
-        opt.value = loc;
-        opt.textContent = loc;
-        locSelect.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = loc; opt.textContent = loc; locSelect.appendChild(opt);
       });
     }
     if (wasteSelect.options.length <= 1) {
       [...new Set(data.map(r => r.waste_type).filter(Boolean))].forEach(waste => {
-        const opt = document.createElement('option');
-        opt.value = waste;
-        opt.textContent = waste;
-        wasteSelect.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = waste; opt.textContent = waste; wasteSelect.appendChild(opt);
       });
     }
 
-    if (filtered.length === 0) {
-      emptyEl.style.display = 'block';
-      return;
-    }
+    const container = document.getElementById('shipmentsList');
+    const emptyEl = document.getElementById('emptyState');
+    container.innerHTML = '';
+    
+    if (filtered.length === 0) { emptyEl.style.display = 'block'; return; }
     emptyEl.style.display = 'none';
 
     filtered.forEach(r => {
       const card = document.createElement('div');
-      card.className = `shipment-card status-${r.status}`;
-      const emoji = wasteEmojis[r.waste_type] || '🚮';
+      card.className = 'shipment-card';
       
+      // Timeline Logic
+      const steps = ['Req', 'Driver', 'Pay', 'Pick', 'Drop', 'Done'];
+      let activeIndex = 0;
+      if (r.status === 'assigned') activeIndex = 1;
+      if (r.payment_received) activeIndex = 2;
+      if (r.status === 'collected') activeIndex = 3;
+      if (r.delivered_to_facility) activeIndex = 4;
+      if (r.status === 'processed') activeIndex = 5;
+      const progressWidth = (activeIndex / (steps.length - 1)) * 100;
+
+      const emoji = wasteEmojis[r.waste_type] || '';
+      const isAssigned = !!r.worker_id;
+      const btnText = isAssigned ? 'Reassign' : 'Assign';
+      const btnClass = isAssigned ? 'btn-reassign' : 'btn-primary';
+
       card.innerHTML = `
         <div class="card-header">
-          <div style="display:flex; gap:12px; align-items:center;">
-            <div class="waste-emoji">${emoji}</div>
+          <div class="card-title-group">
+            <div class="waste-icon-box">${emoji}</div>
             <div class="card-title">
               <h4>${r.patron_name || 'Unknown'}</h4>
-              <div style="font-size:12px; color:var(--text-muted);">${r.pickup_location || 'No location'}</div>
+              <p>ID: ${r.id.substring(0, 8)}... • ${new Date(r.created_at).toLocaleDateString()}</p>
             </div>
           </div>
           <span class="status-badge ${r.status}">${r.status}</span>
         </div>
-        <div class="card-details">
-          <div class="detail-item"><label>Waste Stream</label><span>${r.waste_type || 'N/A'}</span></div>
+        
+        <div class="card-details-grid">
+          <div class="detail-item"><label>Waste Type</label><span>${r.waste_type || 'N/A'}</span></div>
           <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg || 0} kg</span></div>
-          <div class="detail-item"><label>Vehicle</label><span>${r.vehicle_type || 'Pending'}</span></div>
-          <div class="detail-item"><label>Driver</label><span>${r.field_workers?.name || 'Unassigned'}</span></div>
+          <div class="detail-item"><label>Pickup Location</label><span>${r.pickup_location || 'N/A'}</span></div>
+          <div class="detail-item"><label>Assigned Driver</label><span>${r.field_workers ? r.field_workers.name : 'Unassigned'}</span></div>
         </div>
-        <div class="card-actions">
-          <select onchange="changeStatus('${r.id}', this.value)">
-            <option value="">Update Status</option>
-            <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
-            <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Assigned</option>
-            <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Collected</option>
-            <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed</option>
-            <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-          </select>
-          <button class="btn btn-primary" style="font-size:12px;" onclick="load()">Save</button>
+
+        <div class="timeline-container">
+          <div class="timeline-track">
+            <div class="timeline-progress" style="width: ${progressWidth}%"></div>
+            ${steps.map((_, i) => `<div class="timeline-dot ${i <= activeIndex ? 'active' : ''}"></div>`).join('')}
+          </div>
+          <div class="timeline-labels">${steps.map(s => `<span>${s}</span>`).join('')}</div>
+        </div>
+
+        <div class="card-footer">
+          <div class="checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> 
+              Payment Received
+            </label>
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> 
+              Delivered to Facility
+            </label>
+          </div>
+          <div class="action-group">
+            <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
+            <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
+            <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
+            <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
+              ${['pending', 'assigned', 'collected', 'processed', 'cancelled'].map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
         </div>
       `;
       container.appendChild(card);
     });
   }
 
+  function getWorkerOptions(selectedId) {
+    const opts = workers.map(w => {
+      const area = w.service_area ? ` - ${w.service_area}` : '';
+      const status = w.status === 'busy' ? ' (Busy)' : '';
+      return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' && w.id !== selectedId ? 'disabled' : ''}>${w.name}${area}${status}</option>`;
+    }).join('');
+    return `<option value="">Choose worker...</option>` + opts;
+  }
+
+  async function toggleField(id, field, value) {
+    try { await apiFetch(`/api/pickup-requests/${id}/update`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) }); await load(); } catch (e) { alert(e.message); }
+  }
+  async function assignWorker(id, btn) {
+    const select = btn.parentElement.querySelector('.worker-select');
+    if (!select.value) return alert('Please select a worker');
+    btn.disabled = true; btn.textContent = '...';
+    try { await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) }); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = btn.classList.contains('btn-reassign') ? 'Reassign' : 'Assign'; }
+  }
+  async function autoAssign(id, btn) {
+    btn.disabled = true; btn.textContent = '...';
+    try { const res = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' }); alert(`Assigned to ${res.worker}`); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
+  }
   async function changeStatus(id, status) {
-    if (!status) return;
-    try {
-      await apiFetch(`/api/pickup-requests/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      await load();
-    } catch (e) {
-      alert(e.message);
-    }
+    try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load(); } catch (e) { alert(e.message); }
   }
 
   function openAddWorker() {
@@ -351,43 +483,21 @@
     document.getElementById('workerError').textContent = '';
     document.getElementById('addWorkerDialog').showModal();
   }
-
   async function submitAddWorker() {
     const name = document.getElementById('workerNameInput').value.trim();
     const phone = document.getElementById('workerPhoneInput').value.trim();
     const area = document.getElementById('workerAreaInput').value.trim();
-    if (!name) {
-      document.getElementById('workerError').textContent = 'Name is required.';
-      return;
-    }
-    try {
-      await apiFetch('/api/field-workers', {
-        method: 'POST',
-        body: JSON.stringify({ name, phone, service_area: area || null })
-      });
-      document.getElementById('addWorkerDialog').close();
-      await load();
-    } catch (e) {
-      document.getElementById('workerError').textContent = e.message;
-    }
+    if (!name) { document.getElementById('workerError').textContent = 'Name is required.'; return; }
+    try { await apiFetch('/api/field-workers', { method: 'POST', body: JSON.stringify({ name, phone, service_area: area || null }) }); document.getElementById('addWorkerDialog').close(); await load(); } catch (e) { document.getElementById('workerError').textContent = e.message; }
   }
 
   async function generateAIReport() {
     document.getElementById('reportContent').textContent = 'Analyzing data...';
     document.getElementById('reportDialog').showModal();
-    try {
-      const result = await apiFetch('/api/reports/weekly-impact');
-      document.getElementById('reportContent').textContent = result.report;
-    } catch (e) {
-      document.getElementById('reportContent').textContent = 'Error: ' + e.message;
-    }
+    try { const result = await apiFetch('/api/reports/weekly-impact'); document.getElementById('reportContent').textContent = result.report; } catch (e) { document.getElementById('reportContent').textContent = 'Error: ' + e.message; }
   }
 
-  // Auto-login if key exists
-  if (getKey()) {
-    console.log('Auto-login attempt');
-    enterApp();
-  }
+  if (getKey()) enterApp();
 </script>
 </body>
 </html>
