@@ -21,11 +21,13 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
-  /* Sidebar - always visible, with toggle button at bottom */
+  /* Sidebar - always visible */
   .sidebar {
     width: 80px; background: var(--sidebar-bg); color: #fff;
     display: flex; flex-direction: column; align-items: center; padding: 20px 0;
-    transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
+    transition: width 0.3s ease; overflow: visible; flex-shrink: 0;
+    position: relative;
+    z-index: 100;
   }
   .sidebar.expanded { width: 260px; align-items: flex-start; padding: 20px 24px; }
   
@@ -34,7 +36,6 @@
     justify-content: center;
   }
   .sidebar.expanded .sidebar-header { justify-content: flex-start; }
-  /* Logo fills entire circle with no white space */
   .sidebar-header img { 
     width: 40px; height: 40px; border-radius: 50%; object-fit: cover; 
     flex-shrink: 0; display: block;
@@ -57,7 +58,6 @@
   .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
   .sidebar.expanded .nav-text { opacity: 1; }
   
-  /* Toggle button at bottom of sidebar */
   .sidebar-toggle {
     margin-top: auto; padding: 12px; width: 100%;
     display: flex; justify-content: center; align-items: center;
@@ -81,7 +81,7 @@
   .sidebar.expanded .sidebar-footer { opacity: 1; }
 
   /* Main Content */
-  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
   
   .top-bar {
     background: var(--card-bg); padding: 16px 32px;
@@ -119,7 +119,7 @@
   .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
   .section-title::before { content: ''; width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; }
 
-  /* Floating Cards with Left Colored Strip */
+  /* Floating Cards with Vibrant Left Colored Strip */
   .shipments-list { display: flex; flex-direction: column; gap: 20px; }
   
   .shipment-card {
@@ -131,15 +131,15 @@
   }
   .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 61, 58, 0.12); }
   
-  /* Left colored strip per status */
+  /* Vibrant left colored strip per status */
   .shipment-card::before {
     content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
   }
-  .shipment-card.status-pending::before { background: var(--secondary); }
-  .shipment-card.status-assigned::before { background: var(--primary); }
-  .shipment-card.status-collected::before { background: #8B5CF6; }
-  .shipment-card.status-processed::before { background: #10B981; }
-  .shipment-card.status-cancelled::before { background: var(--tertiary); }
+  .shipment-card.status-pending::before { background: #F4B13B; } /* Golden Hour - Amber */
+  .shipment-card.status-assigned::before { background: #3B82F6; } /* Vibrant Blue */
+  .shipment-card.status-collected::before { background: #8B5CF6; } /* Vibrant Purple */
+  .shipment-card.status-processed::before { background: #10B981; } /* Bright Emerald */
+  .shipment-card.status-cancelled::before { background: #E0745E; } /* Terracotta - Coral */
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
   .card-title-group { display: flex; align-items: center; gap: 16px; }
@@ -245,7 +245,6 @@
     <span class="nav-text">Reports</span>
   </div>
   
-  <!-- Collapse/Expand button at bottom -->
   <div class="sidebar-toggle" onclick="toggleSidebar()">
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
     <span class="sidebar-toggle-text">Collapse</span>
@@ -333,17 +332,15 @@
   let searchQuery = '';
   let workers = [];
   
-  // Only the 6 new waste categories - legacy removed
   const wasteEmojis = { 
     'processing': '', 
-    'market': '🛒', 
-    'restaurant': '🍽️', 
-    'household': '🏠', 
+    'market': '', 
+    'restaurant': '️', 
+    'household': '', 
     'agriculture': '🌾', 
     'institutional': '🏫'
   };
 
-  // Status-to-timeline-step mapping
   const statusToStep = {
     'pending': 0,
     'assigned': 1,
@@ -410,7 +407,6 @@
     load();
   }
 
-  // Calculate estimated cost for display
   function calculateCost(kg) {
     if (!kg) return 0;
     const baseRate = 50;
@@ -449,7 +445,6 @@
       const card = document.createElement('div');
       card.className = `shipment-card status-${r.status}`;
       
-      // Timeline: REQ -> DRIVER -> PAY -> PICK -> DROP -> DONE
       const steps = ['REQ', 'DRIVER', 'PAY', 'PICK', 'DROP', 'DONE'];
       let activeIndex = statusToStep[r.status] ?? 0;
       if (r.payment_received && activeIndex < 2) activeIndex = 2;
@@ -462,9 +457,7 @@
       const btnText = isAssigned ? 'Reassign' : 'Assign';
       const btnClass = isAssigned ? 'btn-reassign' : 'btn-primary';
       
-      // Vehicle type display
       const vehicleDisplay = r.vehicle_type || 'Pending';
-      // Amount paid display
       const amountPaid = r.payment_received ? `KES ${calculateCost(r.estimated_volume_kg).toLocaleString()}` : 'Pending';
 
       card.innerHTML = `
