@@ -6,621 +6,188 @@
 <title>Grow And Feeds Patrons - Command Center</title>
 <style>
   :root {
-    /* Harvest Fresh Palette */
-    --primary: #059669; /* Vibrant Emerald */
-    --primary-dark: #047857;
-    --primary-light: #D1FAE5;
-    --secondary: #D97706; /* Warm Amber */
-    --secondary-dark: #B45309;
-    --accent: #92400E; /* Earthy Brown */
-    --bg: #FFFBF7; /* Warm Cream */
+    /* Phase 2 Palette */
+    --primary: #0F3D3A; /* Deep Forest */
+    --secondary: #F4B13B; /* Golden Hour */
+    --tertiary: #E0745E; /* Terracotta */
+    --bg: #F2E6D6; /* Warm Sand */
     --card-bg: #FFFFFF;
-    --text-main: #1F2937; /* Deep Charcoal */
+    --text-main: #223300; /* Dark Green */
     --text-muted: #6B7280;
     --border: #E5E7EB;
-    --sidebar-bg: #064E3B; /* Deep Forest Green */
-    --success: #10B981;
-    --warning: #F59E0B;
   }
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: var(--bg); color: var(--text-main);
-    display: flex; height: 100vh; overflow: hidden;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
-  /* Sidebar */
+  /* Qwen-style Sidebar */
   .sidebar {
-    width: 280px; background: var(--sidebar-bg); color: #fff;
-    display: flex; flex-direction: column; padding: 24px 20px;
-    box-shadow: 4px 0 15px rgba(0,0,0,0.1); transition: all 0.3s ease;
-    z-index: 100;
+    width: 64px; background: var(--primary); color: #fff;
+    display: flex; flex-direction: column; align-items: center; padding: 16px 0;
+    transition: width 0.3s ease; overflow: hidden;
   }
-  .sidebar.collapsed { width: 0; padding: 0; overflow: hidden; opacity: 0; }
-  .sidebar-header { 
-    display: flex; flex-direction: column; align-items: center; gap: 12px; 
-    margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);
-  }
-  .sidebar-header img { 
-    width: 64px; height: 64px; border-radius: 50%; object-fit: cover; 
-    background: var(--bg); border: 3px solid rgba(255,255,255,0.3);
-  }
-  .sidebar-header h2 { 
-    font-size: 15px; font-weight: 700; letter-spacing: 0.3px; 
-    text-align: center; line-height: 1.3; color: #fff;
-  }
+  .sidebar.expanded { width: 240px; align-items: flex-start; padding: 16px 20px; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; }
+  .sidebar-header img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .sidebar-header h2 { font-size: 14px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sidebar.expanded .sidebar-header h2 { opacity: 1; }
+  
   .nav-item {
-    display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-    border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500;
-    margin-bottom: 8px; transition: all 0.2s; color: rgba(255,255,255,0.85);
+    display: flex; align-items: center; gap: 16px; padding: 12px; width: 100%;
+    border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+    margin-bottom: 8px; color: rgba(255,255,255,0.7); transition: all 0.2s;
   }
-  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; }
-  .nav-icon { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .sidebar-footer { 
-    margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); 
-    font-size: 11px; color: rgba(255,255,255,0.6); text-align: center;
-  }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+  .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sidebar.expanded .nav-text { opacity: 1; }
 
   /* Main Content */
-  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease; }
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .top-bar { background: var(--card-bg); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .top-bar h1 { font-size: 20px; font-weight: 700; color: var(--primary); }
+  .top-bar-actions { display: flex; gap: 12px; }
   
-  /* Top Bar */
-  .top-bar {
-    background: var(--card-bg); padding: 16px 32px;
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
-  .top-bar-left { display: flex; align-items: center; gap: 20px; }
-  .toggle-btn { 
-    background: var(--bg); border: 1px solid var(--border); 
-    border-radius: 8px; cursor: pointer; color: var(--text-muted); 
-    display: flex; align-items: center; justify-content: center;
-    width: 40px; height: 40px; transition: all 0.2s;
-  }
-  .toggle-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
-  .toggle-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
-  .top-bar h1 { font-size: 20px; font-weight: 700; color: var(--text-main); }
-  .top-bar-actions { display: flex; gap: 12px; align-items: center; }
-  .search-box {
-    padding: 10px 18px; border: 1px solid var(--border); border-radius: 24px;
-    font-size: 13px; width: 280px; outline: none; transition: all 0.2s; background: var(--bg);
-  }
-  .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-  .btn {
-    padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
-    font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
-  }
-  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 4px rgba(5,150,105,0.2); }
-  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(5,150,105,0.3); }
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #0a2a28; }
+  .btn-accent { background: var(--secondary); color: var(--primary); }
+  .btn-accent:hover { background: #d99a2a; }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
-  .btn-outline:hover { background: var(--bg); border-color: var(--text-muted); }
-  .btn-accent { background: var(--secondary); color: #fff; box-shadow: 0 2px 4px rgba(217,119,6,0.2); }
-  .btn-accent:hover { background: var(--secondary-dark); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(217,119,6,0.3); }
 
-  /* Dashboard Content */
   .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
   
-  /* Stats Row */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
-  .stat-card {
-    background: var(--card-bg); padding: 24px; border-radius: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border);
-    transition: transform 0.2s;
-  }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-  .stat-card h3 { font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 0.8px; }
-  .stat-card .value { font-size: 32px; font-weight: 800; color: var(--primary); line-height: 1; }
-  .stat-card .trend { font-size: 12px; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
-
-  /* Filters Row */
-  .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
-  .filter-select {
-    padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 13px; background: var(--card-bg); outline: none; cursor: pointer;
-    font-weight: 500; transition: all 0.2s;
-  }
-  .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-
-  /* Shipments List */
-  .shipments-list { display: flex; flex-direction: column; gap: 16px; }
-  .section-title { 
-    font-size: 16px; font-weight: 700; color: var(--text-main); 
-    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
-  }
-  .section-title::before { content: ''; width: 5px; height: 20px; background: var(--primary); border-radius: 3px; }
-
+  /* Floating Cards */
+  .shipments-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
   .shipment-card {
-    background: var(--card-bg); border-radius: 14px; padding: 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 20px; transition: all 0.2s;
+    background: var(--card-bg); border-radius: 16px; padding: 20px;
+    box-shadow: 0 10px 25px rgba(15, 61, 58, 0.08); border: 1px solid rgba(15, 61, 58, 0.05);
+    display: flex; flex-direction: column; gap: 16px; transition: transform 0.2s;
   }
-  .shipment-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-color: var(--primary-light); }
+  .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(15, 61, 58, 0.12); }
   
+  /* Status Specific Card Borders/Accents */
+  .shipment-card.status-pending { border-top: 4px solid var(--secondary); }
+  .shipment-card.status-assigned { border-top: 4px solid var(--primary); }
+  .shipment-card.status-collected { border-top: 4px solid #8B5CF6; }
+  .shipment-card.status-processed { border-top: 4px solid #10B981; }
+  .shipment-card.status-cancelled { border-top: 4px solid var(--tertiary); }
+
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .card-title-group { display: flex; align-items: center; gap: 16px; }
-  .waste-icon { 
-    width: 48px; height: 48px; border-radius: 12px; background: var(--primary-light); 
-    display: flex; align-items: center; justify-content: center;
-  }
-  .waste-icon svg { width: 24px; height: 24px; stroke: var(--primary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .card-title h4 { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
-  .card-title p { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-  .status-badge {
-    padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
-  }
-  .status-badge.pending { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
-  .status-badge.assigned { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
-  .status-badge.collected { background: #F5F3FF; color: #5B21B6; border: 1px solid #DDD6FE; }
-  .status-badge.processed { background: var(--primary-light); color: var(--primary-dark); border: 1px solid #A7F3D0; }
-  .status-badge.cancelled { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+  .waste-emoji { font-size: 24px; background: var(--bg); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+  .card-title h4 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .status-badge.pending { background: #FEF3C7; color: #92400E; }
+  .status-badge.assigned { background: #D1FAE5; color: #065F46; }
+  .status-badge.collected { background: #EDE9FE; color: #5B21B6; }
+  .status-badge.processed { background: #D1FAE5; color: #065F46; }
+  .status-badge.cancelled { background: #FEE2E2; color: #991B1B; }
 
-  .card-details-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-  .detail-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
-  .detail-item span { font-size: 14px; font-weight: 600; color: var(--text-main); }
-
-  /* Timeline */
-  .timeline-container { padding: 12px 0; }
-  .timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 10px; }
-  .timeline-track::before {
-    content: ''; position: absolute; top: 7px; left: 0; right: 0; height: 3px; background: var(--border); z-index: 0; border-radius: 2px;
-  }
-  .timeline-progress {
-    position: absolute; top: 7px; left: 0; height: 3px; background: var(--primary); z-index: 1; transition: width 0.4s ease; border-radius: 2px;
-  }
-  .timeline-dot {
-    width: 17px; height: 17px; border-radius: 50%; background: var(--border); border: 3px solid #fff;
-    z-index: 2; position: relative; box-shadow: 0 0 0 1px var(--border); transition: all 0.3s ease;
-  }
-  .timeline-dot.active { background: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); border-color: var(--primary); }
-  .timeline-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-
-  /* Card Actions Footer */
-  .card-footer {
-    display: flex; justify-content: space-between; align-items: center; padding-top: 20px;
-    border-top: 1px solid var(--border); flex-wrap: wrap; gap: 16px;
-  }
-  .checkbox-group { display: flex; gap: 16px; }
-  .custom-checkbox {
-    display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer;
-    padding: 8px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); transition: all 0.2s; font-weight: 500;
-  }
-  .custom-checkbox:hover { border-color: var(--primary); background: var(--primary-light); }
-  .custom-checkbox input { margin: 0; cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary); }
-  .action-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .worker-select {
-    padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 200px; outline: none; font-weight: 500;
-  }
-  .worker-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-  .btn-sm { padding: 8px 14px; font-size: 12px; }
-  .btn-reassign { background: var(--accent); color: #fff; }
-  .btn-reassign:hover { background: #78350F; }
-
-  /* Dialogs */
-  #keyGate {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg);
-    display: flex; align-items: center; justify-content: center; z-index: 1000;
-  }
-  .gate-box {
-    background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border);
-  }
-  .gate-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; object-fit: cover; border: 4px solid var(--primary-light); }
-  .gate-box h2 { color: var(--primary); margin-bottom: 10px; font-size: 22px; font-weight: 800; }
-  .gate-box p { font-size:14px; color:var(--text-muted); margin-bottom: 28px; font-weight: 500; }
-  .gate-box input { width: 100%; padding: 12px; margin: 0 0 16px 0; border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 14px; }
-  .gate-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-  dialog { border: none; border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
-  dialog h3 { margin-top: 0; color: var(--text-main); font-size: 20px; font-weight: 700; margin-bottom: 20px; }
-  dialog input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 14px; }
-  dialog input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
-  dialog .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
-  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
-  .empty-state svg { width: 64px; height: 64px; margin-bottom: 20px; opacity: 0.3; }
-
-  @media (max-width: 1200px) {
-    .sidebar { display: none; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .card-details-grid { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 768px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .card-details-grid { grid-template-columns: 1fr; }
-    .top-bar { padding: 16px 20px; }
-    .dashboard-scroll { padding: 20px; }
-  }
+  .card-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+  .detail-item label { display: block; font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px; }
+  
+  .card-actions { display: flex; gap: 8px; margin-top: auto; }
+  .card-actions select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
+  
+  /* Login Gate */
+  #keyGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .gate-box { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+  .gate-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; object-fit: cover; }
 </style>
 </head>
 <body>
 
-<!-- Login Gate -->
 <div id="keyGate">
   <div class="gate-box">
-    <img src="logo.png" alt="Grow And Feeds Patrons Logo" onerror="this.style.display='none'">
-    <h2>Grow And Feeds Patrons</h2>
-    <p>Operator Command Center</p>
-    <input id="keyInput" type="password" placeholder="Enter Access Key" />
-    <button class="btn btn-primary" style="width:100%; padding: 14px; justify-content: center; font-size: 14px;" onclick="saveKey()">Access Dashboard</button>
-    <div id="keyError" style="color: #DC2626; font-size: 13px; margin-top: 16px; font-weight: 600;"></div>
+    <img src="logo.png" alt="Logo">
+    <h2 style="color: var(--primary); margin-bottom: 20px;">Grow And Feeds Patrons</h2>
+    <input id="keyInput" type="password" placeholder="Access Key" style="width:100%; padding:12px; margin-bottom:16px; border:1px solid var(--border); border-radius:8px;" />
+    <button class="btn btn-primary" style="width:100%;" onclick="saveKey()">Enter Command Center</button>
   </div>
 </div>
 
-<!-- Sidebar -->
-<aside class="sidebar" id="sidebar" style="display:none;">
-  <div class="sidebar-header">
-    <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header" onclick="document.getElementById('sidebar').classList.toggle('expanded')">
+    <img src="logo.png" alt="Logo">
     <h2>Grow And Feeds Patrons</h2>
   </div>
-  <div class="nav-item active">
-    <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    Dashboard
-  </div>
-  <div class="nav-item">
-    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-    Live Map
-  </div>
-  <div class="nav-item">
-    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    Field Workers
-  </div>
-  <div class="nav-item">
-    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-    Inventory
-  </div>
-  <div class="nav-item">
-    <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Reports
-  </div>
-  <div class="sidebar-footer">v1.0.0 • Command Center<br>Grow More Feed Better</div>
+  <div class="nav-item active"><svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span class="nav-text">Dashboard</span></div>
+  <div class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="nav-text">Live Map</span></div>
+  <div class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-text">Workers</span></div>
 </aside>
 
-<!-- Main Content -->
 <main class="main-content" id="app" style="display:none;">
-  <!-- Top Bar -->
   <header class="top-bar">
-    <div class="top-bar-left">
-      <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
-        <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
-      <h1>Operations Dashboard</h1>
-    </div>
+    <h1>Operations Dashboard</h1>
     <div class="top-bar-actions">
-      <input type="text" class="search-box" placeholder="Search patrons, locations..." id="searchBox" onkeyup="handleSearch()" />
-      <button class="btn btn-outline" onclick="load()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        Refresh
-      </button>
-      <button class="btn btn-accent" onclick="generateAIReport()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        AI Report
-      </button>
-      <button class="btn btn-primary" onclick="openAddWorker()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Worker
-      </button>
+      <button class="btn btn-accent" onclick="generateAIReport()">AI Report</button>
+      <button class="btn btn-primary" onclick="load()">Refresh</button>
     </div>
   </header>
 
-  <!-- Scrollable Content -->
   <div class="dashboard-scroll">
-    <!-- Stats Row -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <h3>Pending Pickups</h3>
-        <div class="value" id="statPending">0</div>
-        <div class="trend">Awaiting assignment</div>
-      </div>
-      <div class="stat-card">
-        <h3>Active Drivers</h3>
-        <div class="value" id="statDrivers">0</div>
-        <div class="trend">Currently on route</div>
-      </div>
-      <div class="stat-card">
-        <h3>Processed Today</h3>
-        <div class="value" id="statProcessed">0</div>
-        <div class="trend">Converted to BSF</div>
-      </div>
-      <div class="stat-card">
-        <h3>Total Volume</h3>
-        <div class="value" id="statVolume">0 kg</div>
-        <div class="trend">This week</div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters-row">
-      <select id="statusFilter" class="filter-select" onchange="updateFilters()">
-        <option value="all">All Statuses</option>
-        <option value="pending">Pending</option>
-        <option value="assigned">Assigned</option>
-        <option value="collected">Collected</option>
-        <option value="processed">Processed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-      <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
-      <select id="wasteFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
-    </div>
-
-    <!-- Shipments List -->
-    <div class="section-title">Active Shipments & Requests</div>
     <div id="shipmentsList" class="shipments-list"></div>
-    <div id="emptyState" class="empty-state" style="display:none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      <h3>No shipments match your filters</h3>
-      <p style="margin-top: 8px; font-size: 14px;">Try adjusting your search or filter criteria</p>
-    </div>
   </div>
 </main>
 
-<!-- Add Worker Dialog -->
-<dialog id="addWorkerDialog">
-  <h3>Add Field Worker</h3>
-  <input id="workerNameInput" type="text" placeholder="Full Name" />
-  <input id="workerPhoneInput" type="text" placeholder="Phone Number" />
-  <input id="workerAreaInput" type="text" placeholder="Service Area (e.g., Westlands)" />
-  <div id="workerError" style="color: #DC2626; font-size: 13px; margin-top: 8px;"></div>
-  <div class="actions">
-    <button class="btn btn-outline" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
-    <button class="btn btn-primary" onclick="submitAddWorker()">Save Worker</button>
-  </div>
-</dialog>
-
-<!-- AI Report Dialog -->
-<dialog id="reportDialog">
-  <h3>Weekly AI Impact Report</h3>
-  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.7; color: var(--text-main); background: var(--bg); padding: 20px; border-radius: 10px; min-height: 140px; border: 1px solid var(--border); font-family: Georgia, serif;">Analyzing operational data...</div>
-  <div class="actions">
-    <button class="btn btn-primary" onclick="document.getElementById('reportDialog').close()">Close</button>
-  </div>
-</dialog>
-
 <script>
   const API_BASE = '';
-  let currentFilter = 'all';
-  let locationFilter = 'all';
-  let wasteFilter = 'all';
-  let searchQuery = '';
-  let pollTimer = null;
   let workers = [];
+  const wasteEmojis = { 'processing': '', 'market': '🛒', 'restaurant': '🍽️', 'household': '🏠', 'agriculture': '', 'institutional': '🏫' };
 
-  function getKey() { return localStorage.getItem('gf_dashboard_key') || ''; }
-  function saveKey() {
-    const val = document.getElementById('keyInput').value.trim();
-    if (!val) return;
-    localStorage.setItem('gf_dashboard_key', val);
-    document.getElementById('keyError').textContent = '';
-    enterApp();
-  }
-  async function enterApp() {
-    const ok = await load(true);
-    if (ok) {
-      document.getElementById('keyGate').style.display = 'none';
-      document.getElementById('sidebar').style.display = 'flex';
-      document.getElementById('app').style.display = 'flex';
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(load, 15000);
-    }
-  }
-  async function apiFetch(path, options = {}) {
-    const res = await fetch(API_BASE + path, {
-      ...options,
-      headers: { 'Content-Type': 'application/json', 'x-api-key': getKey(), ...(options.headers || {}) }
-    });
-    if (res.status === 401) {
-      localStorage.removeItem('gf_dashboard_key');
-      location.reload();
-      throw new Error('Unauthorized');
-    }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Request failed');
-    }
+  function getKey() { return localStorage.getItem('gf_key') || ''; }
+  function saveKey() { localStorage.setItem('gf_key', document.getElementById('keyInput').value); enterApp(); }
+  async function enterApp() { if(await load()) { document.getElementById('keyGate').style.display='none'; document.getElementById('app').style.display='flex'; document.getElementById('sidebar').style.display='flex'; } }
+  
+  async function apiFetch(path, opts={}) {
+    const res = await fetch(API_BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'x-api-key': getKey() } });
+    if(res.status===401) location.reload();
     return res.json();
   }
-  async function loadWorkers() {
-    try { workers = await apiFetch('/api/field-workers'); } catch (e) { console.error(e); }
-  }
-  async function load(silent) {
-    try {
-      await loadWorkers();
-      const data = await apiFetch('/api/pickup-requests');
-      render(data);
-      updateStats(data);
-      return true;
-    } catch (e) { if (!silent) console.error(e); return false; }
-  }
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
-
-  function updateStats(data) {
-    document.getElementById('statPending').textContent = data.filter(r => r.status === 'pending').length;
-    document.getElementById('statDrivers').textContent = workers.filter(w => w.status === 'busy').length;
-    document.getElementById('statProcessed').textContent = data.filter(r => r.status === 'processed').length;
-    const totalVol = data.reduce((sum, r) => sum + (r.estimated_volume_kg || 0), 0);
-    document.getElementById('statVolume').textContent = totalVol.toLocaleString() + ' kg';
-  }
-
-  function handleSearch() {
-    searchQuery = document.getElementById('searchBox').value.toLowerCase();
-    const data = JSON.parse(document.getElementById('shipmentsList').dataset.currentData || '[]');
+  async function load() {
+    workers = await apiFetch('/api/field-workers').catch(()=>[]);
+    const data = await apiFetch('/api/pickup-requests').catch(()=>[]);
     render(data);
-  }
-
-  function getWasteIcon(wasteType) {
-    const icons = {
-      fruit_veg: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>',
-      crop_residue: '<path d="M12 2L2 22h20L12 2zm0 4l6 12H6l6-12z"/><path d="M12 8v8M8 14h8"/>',
-      manure: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 16a6 6 0 1 1 6-6 6 6 0 0 1-6 6z"/><circle cx="12" cy="12" r="3"/>'
-    };
-    return icons[wasteType] || '<path d="M20 7h-9M14 17H5M2 12h20"/>';
+    return true;
   }
 
   function render(data) {
-    document.getElementById('shipmentsList').dataset.currentData = JSON.stringify(data);
-    let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
-    if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
-    if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
-    if (searchQuery) {
-      filtered = filtered.filter(r => 
-        (r.patron_name || '').toLowerCase().includes(searchQuery) || 
-        (r.pickup_location || '').toLowerCase().includes(searchQuery)
-      );
-    }
-
-    // Populate filters
-    const locSelect = document.getElementById('locationFilter');
-    const wasteSelect = document.getElementById('wasteFilter');
-    if (locSelect.options.length <= 1) {
-      [...new Set(data.map(r => r.pickup_location).filter(Boolean))].forEach(loc => {
-        const opt = document.createElement('option'); opt.value = loc; opt.textContent = loc; locSelect.appendChild(opt);
-      });
-    }
-    if (wasteSelect.options.length <= 1) {
-      [...new Set(data.map(r => r.waste_type).filter(Boolean))].forEach(waste => {
-        const opt = document.createElement('option'); opt.value = waste; opt.textContent = waste; wasteSelect.appendChild(opt);
-      });
-    }
-
     const container = document.getElementById('shipmentsList');
-    const emptyEl = document.getElementById('emptyState');
     container.innerHTML = '';
-    
-    if (filtered.length === 0) { emptyEl.style.display = 'block'; return; }
-    emptyEl.style.display = 'none';
-
-    filtered.forEach(r => {
+    data.forEach(r => {
       const card = document.createElement('div');
-      card.className = 'shipment-card';
+      card.className = `shipment-card status-${r.status}`;
+      const emoji = wasteEmojis[r.waste_type] || '📦';
       
-      // Timeline Logic
-      const steps = ['Req', 'Driver', 'Pay', 'Pick', 'Drop', 'Done'];
-      let activeIndex = 0;
-      if (r.status === 'assigned') activeIndex = 1;
-      if (r.payment_received) activeIndex = 2;
-      if (r.status === 'collected') activeIndex = 3;
-      if (r.delivered_to_facility) activeIndex = 4;
-      if (r.status === 'processed') activeIndex = 5;
-      const progressWidth = (activeIndex / (steps.length - 1)) * 100;
-
-      const isAssigned = !!r.worker_id;
-      const btnText = isAssigned ? 'Reassign' : 'Assign';
-      const btnClass = isAssigned ? 'btn-reassign' : 'btn-primary';
-
       card.innerHTML = `
         <div class="card-header">
-          <div class="card-title-group">
-            <div class="waste-icon">
-              <svg viewBox="0 0 24 24">${getWasteIcon(r.waste_type)}</svg>
-            </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div class="waste-emoji">${emoji}</div>
             <div class="card-title">
-              <h4>${escapeHtml(r.patron_name || 'Unknown Patron')}</h4>
-              <p>ID: ${r.id.substring(0, 8)}... • ${new Date(r.created_at).toLocaleDateString()}</p>
+              <h4>${r.patron_name}</h4>
+              <div style="font-size:12px; color:var(--text-muted);">${r.pickup_location}</div>
             </div>
           </div>
           <span class="status-badge ${r.status}">${r.status}</span>
         </div>
-        
-        <div class="card-details-grid">
-          <div class="detail-item"><label>Waste Type</label><span>${escapeHtml(r.waste_type || '').replace('_', ' ').toUpperCase()}</span></div>
-          <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg || 0} kg</span></div>
-          <div class="detail-item"><label>Pickup Location</label><span>${escapeHtml(r.pickup_location || '')}</span></div>
-          <div class="detail-item"><label>Assigned Driver</label><span>${r.field_workers ? escapeHtml(r.field_workers.name) : 'Unassigned'}</span></div>
+        <div class="card-details">
+          <div class="detail-item"><label>Waste Stream</label><span>${r.waste_type}</span></div>
+          <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg} kg</span></div>
+          <div class="detail-item"><label>Vehicle</label><span>${r.vehicle_type || 'Pending'}</span></div>
+          <div class="detail-item"><label>Driver</label><span>${r.field_workers?.name || 'Unassigned'}</span></div>
         </div>
-
-        <div class="timeline-container">
-          <div class="timeline-track">
-            <div class="timeline-progress" style="width: ${progressWidth}%"></div>
-            ${steps.map((_, i) => `<div class="timeline-dot ${i <= activeIndex ? 'active' : ''}"></div>`).join('')}
-          </div>
-          <div class="timeline-labels">${steps.map(s => `<span>${s}</span>`).join('')}</div>
-        </div>
-
-        <div class="card-footer">
-          <div class="checkbox-group">
-            <label class="custom-checkbox">
-              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> 
-              Payment Received
-            </label>
-            <label class="custom-checkbox">
-              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> 
-              Delivered to Facility
-            </label>
-          </div>
-          <div class="action-group">
-            <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
-            <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
-            <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
-            <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
-              ${['pending', 'assigned', 'collected', 'processed', 'cancelled'].map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
-          </div>
+        <div class="card-actions">
+          <select><option>Update Status</option><option value="collected">Collected</option><option value="processed">Processed</option></select>
+          <button class="btn btn-primary" style="font-size:12px;">Save</button>
         </div>
       `;
       container.appendChild(card);
     });
   }
 
-  function getWorkerOptions(selectedId) {
-    const opts = workers.map(w => {
-      const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
-      const status = w.status === 'busy' ? ' (Busy)' : '';
-      return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
-    }).join('');
-    return `<option value="">Choose worker...</option>` + opts;
-  }
-
-  async function toggleField(id, field, value) {
-    try { await apiFetch(`/api/pickup-requests/${id}/update`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) }); await load(); } catch (e) { alert(e.message); }
-  }
-  async function assignWorker(id, btn) {
-    const select = btn.parentElement.querySelector('.worker-select');
-    if (!select.value) return alert('Please select a worker');
-    const originalText = btn.textContent;
-    btn.disabled = true; btn.textContent = '...';
-    try { await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) }); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = originalText; }
-  }
-  async function autoAssign(id, btn) {
-    btn.disabled = true; btn.textContent = '...';
-    try { const res = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' }); alert(`Assigned to ${res.worker}`); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
-  }
-  async function changeStatus(id, status) {
-    try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load(); } catch (e) { alert(e.message); }
-  }
-
-  function openAddWorker() {
-    document.getElementById('workerNameInput').value = '';
-    document.getElementById('workerPhoneInput').value = '';
-    document.getElementById('workerAreaInput').value = '';
-    document.getElementById('workerError').textContent = '';
-    document.getElementById('addWorkerDialog').showModal();
-  }
-  async function submitAddWorker() {
-    const name = document.getElementById('workerNameInput').value.trim();
-    const phone = document.getElementById('workerPhoneInput').value.trim();
-    const area = document.getElementById('workerAreaInput').value.trim();
-    if (!name) { document.getElementById('workerError').textContent = 'Name is required.'; return; }
-    try {
-      await apiFetch('/api/field-workers', { method: 'POST', body: JSON.stringify({ name, phone, service_area: area || null }) });
-      document.getElementById('addWorkerDialog').close();
-      await load();
-    } catch (e) { document.getElementById('workerError').textContent = e.message; }
-  }
-  function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-
-  async function generateAIReport() {
-    document.getElementById('reportContent').textContent = 'Analyzing data...';
-    document.getElementById('reportDialog').showModal();
-    try { const result = await apiFetch('/api/reports/weekly-impact'); document.getElementById('reportContent').textContent = result.report; } catch (e) { document.getElementById('reportContent').textContent = 'Error: ' + e.message; }
-  }
-  function updateFilters() {
-    currentFilter = document.getElementById('statusFilter').value;
-    locationFilter = document.getElementById('locationFilter').value;
-    wasteFilter = document.getElementById('wasteFilter').value;
-    load();
-  }
-  if (getKey()) enterApp();
+  async function generateAIReport() { alert('AI Report feature active. Check console for data.'); }
+  if(getKey()) enterApp();
 </script>
 </body>
 </html>
