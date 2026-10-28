@@ -371,16 +371,22 @@
     }
   }
 
-  function initMap() {
+    function initMap() {
     map = L.map('map-container').setView([-1.286389, 36.817223], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    facilities.forEach(fac => {
+    // Add Facility Markers with offset to avoid overlap
+    facilities.forEach((fac, index) => {
       const zone = nairobiZones[fac.locationKey];
       if (zone) {
-        const marker = L.marker([zone.lat, zone.lng], { icon: facilityIcon }).addTo(map);
+        // Add small offset to hub markers to prevent overlap with zone markers
+        const offset = 0.002; // About 200 meters
+        const hubLat = zone.lat + (offset * (index % 2 === 0 ? 1 : -1));
+        const hubLng = zone.lng + (offset * (index < 2 ? 1 : -1));
+        
+        const marker = L.marker([hubLat, hubLng], { icon: facilityIcon, zIndexOffset: 1000 }).addTo(map);
         marker.bindPopup(`<b style="font-size: 14px;">🏭 ${fac.name}</b>`);
         mapLayers.facilities.push(marker);
       }
@@ -409,12 +415,13 @@
     return '#6B7280';
   }
 
-      function updateMapZones(data) {
+  function updateMapZones(data) {
     mapLayers.zones.forEach(m => map.removeLayer(m));
     mapLayers.zones = [];
 
     const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
-    console.log('Unique pickup locations:', uniqueLocations);
+    console.log('📍 Unique pickup locations:', uniqueLocations);
+    console.log(' Kileleshwa in data?', uniqueLocations.some(loc => loc.toLowerCase().includes('kileleshwa')));
     
     if (uniqueLocations.length === 0) {
       console.log('No pickup locations found in data');
@@ -485,8 +492,17 @@
         const color = getWasteColor(dominantWaste);
         
         const marker = L.circleMarker([zone.lat, zone.lng], {
-          radius: 10, fillColor: color, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9
+          radius: 12,
+          fillColor: color, 
+          color: '#fff', 
+          weight: 3, 
+          opacity: 1, 
+          fillOpacity: 0.9,
+          zIndexOffset: 500 // Ensure zone markers are below hubs but above drivers
         }).addTo(map);
+        
+        // Bring to front to ensure visibility
+        marker.bringToFront();
 
         let popupContent = `<b>${loc}</b><br><br>`;
         if (pickupsAtLoc.length === 0) {
