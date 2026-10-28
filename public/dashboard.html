@@ -3,60 +3,120 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Grow and Feeds - Operator Dashboard</title>
+<title>Grow and Feeds - Command Center</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    --primary: #084723;
+    --secondary: #3c2415;
+    --accent: #e9d8c0;
+    --bg: #f9f7f2;
+    --text: #1c2b1e;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+  }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin: 0; background: #f4f6f4; color: #1c2b1e;
+    margin: 0; background: var(--bg); color: var(--text);
   }
   header {
-    background: #1f5e2e; color: #fff; padding: 16px 24px;
+    background: var(--primary); color: #fff; padding: 16px 24px;
     display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
   }
-  header h1 { font-size: 18px; margin: 0; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 600; }
   header .status { font-size: 13px; opacity: 0.9; }
-  main { max-width: 1150px; margin: 20px auto; padding: 0 16px; }
-  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  main { max-width: 1400px; margin: 20px auto; padding: 0 16px; }
+  
+  .toolbar { 
+    display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; 
+    background: var(--card-bg); padding: 12px 16px; border-radius: 8px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
   .tab {
-    padding: 6px 14px; border-radius: 999px; border: 1px solid #cfd8cf;
-    background: #fff; cursor: pointer; font-size: 13px;
+    padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: #fff; cursor: pointer; font-size: 13px; color: var(--text);
   }
-  .tab.active { background: #1f5e2e; color: #fff; border-color: #1f5e2e; }
-  button.refresh, button.secondary {
-    padding: 6px 14px; border-radius: 6px; border: 1px solid #cfd8cf;
-    background: #fff; cursor: pointer; font-size: 13px;
+  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  button.refresh, button.secondary, button.view-toggle {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; cursor: pointer; font-size: 13px; color: var(--text);
   }
+  button.view-toggle.active { background: var(--secondary); color: #fff; border-color: var(--secondary); }
   button.refresh { margin-left: auto; }
-  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
-  th, td { text-align: left; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #edf1ed; vertical-align: top; }
-  th { background: #eef3ee; font-weight: 600; }
+  select {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; font-size: 13px;
+  }
+
+  /* Table Styles */
+  table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  th, td { text-align: left; padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--accent); font-weight: 600; color: var(--secondary); }
   tr:last-child td { border-bottom: none; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
   .badge.pending { background: #fdecd2; color: #92600a; }
   .badge.assigned { background: #dbeafe; color: #1e4d8c; }
   .badge.collected { background: #e0e7ff; color: #3730a3; }
   .badge.processed { background: #dcfce7; color: #15803d; }
   .badge.cancelled { background: #fee2e2; color: #991b1b; }
-  .assign-row { display: flex; gap: 6px; }
+
+  /* Card Styles */
+  .cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .status-group { margin-bottom: 24px; }
+  .status-group h3 { 
+    font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--secondary); 
+    margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent);
+  }
+  .card {
+    background: var(--card-bg); border-radius: 10px; padding: 16px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .card-header h4 { margin: 0; font-size: 16px; color: var(--primary); }
+  .card-details { font-size: 13px; color: #555; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card-details span { display: flex; flex-direction: column; }
+  .card-details strong { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 2px; }
+  
+  /* Workflow Progress */
+  .workflow-steps { display: flex; justify-content: space-between; margin: 12px 0; position: relative; }
+  .workflow-steps::before {
+    content: ''; position: absolute; top: 6px; left: 0; right: 0; height: 2px; background: var(--border); z-index: 0;
+  }
+  .step { 
+    width: 14px; height: 14px; border-radius: 50%; background: var(--border); 
+    border: 2px solid #fff; z-index: 1; position: relative;
+  }
+  .step.active { background: var(--primary); }
+  .step-labels { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-top: 4px; }
+  
+  /* Checkboxes & Actions */
+  .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .checkbox-label { 
+    display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; 
+    padding: 4px 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--border);
+  }
+  .checkbox-label input { margin: 0; }
+  .assign-row { display: flex; gap: 6px; margin-top: 8px; }
   select.worker-select, select.status-select {
-    padding: 5px 7px; border: 1px solid #cfd8cf; border-radius: 5px; font-size: 12px;
+    padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; flex: 1;
   }
   .assign-row button {
-    padding: 5px 9px; border-radius: 5px; border: 1px solid #1f5e2e;
-    background: #1f5e2e; color: #fff; font-size: 12px; cursor: pointer;
+    padding: 5px 9px; border-radius: 5px; border: 1px solid var(--primary);
+    background: var(--primary); color: #fff; font-size: 12px; cursor: pointer;
   }
+  .auto-assign-btn { background: #0284c7 !important; border-color: #0284c7 !important; }
+
+  /* Dialogs & Gates */
   .empty { text-align: center; padding: 40px; color: #6b7a6c; font-size: 14px; }
   #keyGate {
     max-width: 360px; margin: 80px auto; background: #fff; padding: 24px; border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.06); text-align: center;
   }
-  #keyGate input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid #cfd8cf; border-radius: 6px; }
-  #keyGate button { padding: 8px 16px; border-radius: 6px; border: none; background: #1f5e2e; color: #fff; cursor: pointer; }
+  #keyGate input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid var(--border); border-radius: 6px; }
+  #keyGate button { padding: 8px 16px; border-radius: 6px; border: none; background: var(--primary); color: #fff; cursor: pointer; }
   .error { color: #b91c1c; font-size: 13px; margin-top: 8px; }
   dialog { border: none; border-radius: 10px; padding: 20px; max-width: 320px; width: 90%; }
-  dialog input { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid #cfd8cf; border-radius: 6px; }
+  dialog input { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid var(--border); border-radius: 6px; }
   dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 </style>
 </head>
@@ -64,7 +124,7 @@
 
 <div id="keyGate">
   <h2>Operator sign-in</h2>
-  <p style="font-size:13px;color:#6b7a6c;">Enter the dashboard access key given to you.</p>
+  <p style="font-size:13px;color:#6b7a6c;">Enter the dashboard access key.</p>
   <input id="keyInput" type="password" placeholder="Access key" />
   <br />
   <button onclick="saveKey()">Continue</button>
@@ -73,7 +133,7 @@
 
 <div id="app" style="display:none;">
   <header>
-    <h1>Grow and Feeds - Pickup Requests</h1>
+    <h1>Grow and Feeds - Command Center</h1>
     <span class="status" id="lastUpdated">Loading...</span>
   </header>
   <main>
@@ -84,43 +144,41 @@
       <button class="tab" data-filter="processed">Processed</button>
       <button class="tab" data-filter="all">All</button>
       
-      <!-- NEW FILTERS -->
-      <select id="locationFilter" onchange="updateFilters()" style="padding: 6px 14px; border-radius: 999px; border: 1px solid #cfd8cf; background: #fff; font-size: 13px;">
-        <option value="all">All Locations</option>
-      </select>
-      <select id="wasteFilter" onchange="updateFilters()" style="padding: 6px 14px; border-radius: 999px; border: 1px solid #cfd8cf; background: #fff; font-size: 13px;">
-        <option value="all">All Waste Types</option>
-      </select>
-      <!-- END NEW FILTERS -->
-
-      <button class="secondary" onclick="openAddWorker()">+ Add field worker</button>
-      <button class="refresh" onclick="load()">Refresh now</button>
-      <button class="secondary" onclick="generateAIReport()" style="background:#f0fdf4; border-color:#166534; color:#166534; font-weight:600;">Generate AI Impact Report</button>
+      <select id="locationFilter" onchange="updateFilters()"><option value="all">All Locations</option></select>
+      <select id="wasteFilter" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
+      
+      <button class="view-toggle active" id="btnCardView" onclick="setView('card')">Cards</button>
+      <button class="view-toggle" id="btnTableView" onclick="setView('table')">Table</button>
+      
+      <button class="secondary" onclick="openAddWorker()">+ Add Worker</button>
+      <button class="refresh" onclick="load()">Refresh</button>
+      <button class="secondary" onclick="generateAIReport()" style="background:var(--accent); border-color:var(--secondary); color:var(--secondary); font-weight:600;">AI Report</button>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Waste</th>
-          <th>Volume</th>
-          <th>Location</th>
-          <th>Status</th>
-          <th>Field worker</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div id="emptyState" class="empty" style="display:none;">No requests in this view.</div>
+
+    <div id="tableView">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Phone</th><th>Waste</th><th>Volume</th><th>Location</th><th>Status</th><th>Field worker</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="emptyStateTable" class="empty" style="display:none;">No requests in this view.</div>
+    </div>
+
+    <div id="cardView" style="display:none;">
+      <div id="cardsContainer" class="cards-container"></div>
+      <div id="emptyStateCard" class="empty" style="display:none;">No requests in this view.</div>
+    </div>
   </main>
 </div>
 
 <dialog id="addWorkerDialog">
   <h3 style="margin-top:0;">Add field worker</h3>
   <input id="workerNameInput" type="text" placeholder="Full name" />
-  <input id="workerPhoneInput" type="text" placeholder="Phone (optional)" />
-  <input id="workerAreaInput" type="text" placeholder="Service Area (e.g., Nairobi West)" />
+  <input id="workerPhoneInput" type="text" placeholder="Phone" />
+  <input id="workerAreaInput" type="text" placeholder="Service Area" />
   <div class="error" id="workerError"></div>
   <div class="actions">
     <button class="secondary" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
@@ -130,7 +188,7 @@
 
 <dialog id="reportDialog">
   <h3 style="margin-top:0;">Weekly AI Impact Report</h3>
-  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: #1c2b1e; background: #f4f6f4; padding: 12px; border-radius: 6px; min-height: 100px;">Analyzing data and generating report...</div>
+  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--bg); padding: 12px; border-radius: 6px; min-height: 100px;">Analyzing...</div>
   <div class="actions">
     <button class="refresh" onclick="document.getElementById('reportDialog').close()">Close</button>
   </div>
@@ -141,11 +199,11 @@
   let currentFilter = 'pending';
   let locationFilter = 'all';
   let wasteFilter = 'all';
+  let currentView = 'card'; // 'card' or 'table'
   let pollTimer = null;
   let workers = [];
 
   function getKey() { return localStorage.getItem('gf_dashboard_key') || ''; }
-
   function saveKey() {
     const val = document.getElementById('keyInput').value.trim();
     if (!val) return;
@@ -153,7 +211,6 @@
     document.getElementById('keyError').textContent = '';
     enterApp();
   }
-
   async function enterApp() {
     const ok = await load(true);
     if (ok) {
@@ -163,21 +220,16 @@
       pollTimer = setInterval(load, 10000);
     }
   }
-
   async function apiFetch(path, options = {}) {
     const res = await fetch(API_BASE + path, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': getKey(),
-        ...(options.headers || {})
-      }
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getKey(), ...(options.headers || {}) }
     });
     if (res.status === 401) {
       localStorage.removeItem('gf_dashboard_key');
       document.getElementById('app').style.display = 'none';
       document.getElementById('keyGate').style.display = 'block';
-      document.getElementById('keyError').textContent = 'Access key rejected. Try again.';
+      document.getElementById('keyError').textContent = 'Access key rejected.';
       throw new Error('Unauthorized');
     }
     if (!res.ok) {
@@ -186,165 +238,222 @@
     }
     return res.json();
   }
-
   async function loadWorkers() {
-    try {
-      workers = await apiFetch('/api/field-workers');
-    } catch (e) {
-      console.error(e);
-    }
+    try { workers = await apiFetch('/api/field-workers'); } catch (e) { console.error(e); }
   }
-
   async function load(silent) {
     try {
       await loadWorkers();
       const data = await apiFetch('/api/pickup-requests');
       render(data);
-      document.getElementById('lastUpdated').textContent =
-        'Updated ' + new Date().toLocaleTimeString();
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
       return true;
-    } catch (e) {
-      if (!silent) console.error(e);
-      return false;
-    }
+    } catch (e) { if (!silent) console.error(e); return false; }
+  }
+
+  function setView(view) {
+    currentView = view;
+    document.getElementById('btnCardView').classList.toggle('active', view === 'card');
+    document.getElementById('btnTableView').classList.toggle('active', view === 'table');
+    document.getElementById('cardView').style.display = view === 'card' ? 'block' : 'none';
+    document.getElementById('tableView').style.display = view === 'table' ? 'block' : 'none';
   }
 
   function render(data) {
-    // 1. Apply Status Filter
     let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
+    if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
+    if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
 
-    const rowsEl = document.getElementById('rows');
-    const emptyEl = document.getElementById('emptyState');
-    rowsEl.innerHTML = '';
-
-    // 2. Dynamically populate dropdowns (only if they are currently empty to preserve user selection)
+    // Populate filters
     const locSelect = document.getElementById('locationFilter');
     const wasteSelect = document.getElementById('wasteFilter');
-    
     if (locSelect.options.length <= 1) {
-      const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
-      uniqueLocations.forEach(loc => {
-        const opt = document.createElement('option');
-        opt.value = loc; opt.textContent = loc;
-        locSelect.appendChild(opt);
+      [...new Set(data.map(r => r.pickup_location).filter(Boolean))].forEach(loc => {
+        const opt = document.createElement('option'); opt.value = loc; opt.textContent = loc; locSelect.appendChild(opt);
       });
     }
-
     if (wasteSelect.options.length <= 1) {
-      const uniqueWaste = [...new Set(data.map(r => r.waste_type).filter(Boolean))];
-      uniqueWaste.forEach(waste => {
-        const opt = document.createElement('option');
-        opt.value = waste; opt.textContent = waste;
-        wasteSelect.appendChild(opt);
+      [...new Set(data.map(r => r.waste_type).filter(Boolean))].forEach(waste => {
+        const opt = document.createElement('option'); opt.value = waste; opt.textContent = waste; wasteSelect.appendChild(opt);
       });
     }
 
-    // 3. Apply Location and Waste Filters
-    if (locationFilter !== 'all') {
-      filtered = filtered.filter(r => r.pickup_location === locationFilter);
+    if (currentView === 'table') {
+      renderTable(filtered);
+    } else {
+      renderCards(filtered);
     }
-    if (wasteFilter !== 'all') {
-      filtered = filtered.filter(r => r.waste_type === wasteFilter);
-    }
+  }
 
-    // Re-check empty state after applying all filters
-    if (filtered.length === 0) {
-      emptyEl.style.display = 'block';
-      return;
-    }
+  function renderTable(data) {
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('emptyStateTable');
+    rowsEl.innerHTML = '';
+    if (data.length === 0) { emptyEl.style.display = 'block'; return; }
     emptyEl.style.display = 'none';
 
-        const workerOptions = (selectedId) => {
+    const workerOptions = (selectedId) => {
       const opts = workers.map(w => {
         const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
         const status = w.status === 'busy' ? ' (Busy)' : '';
-        const freeAction = w.status === 'busy' ? ` <a href="#" onclick="freeWorker('${w.id}', '${escapeHtml(w.name)}'); return false;" style="color:#0284c7; font-size:11px; margin-left:4px;">[Free]</a>` : '';
-        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>${freeAction}`;
+        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
       }).join('');
       return `<option value="">Choose worker...</option>` + opts;
     };
 
-    for (const r of filtered) {
+    for (const r of data) {
       const tr = document.createElement('tr');
-      const assignedWorker = r.field_workers;
-
-      const statusOptions = ['pending', 'assigned', 'collected', 'processed', 'cancelled']
-        .map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`)
-        .join('');
-
+      const statusOptions = ['pending', 'assigned', 'collected', 'processed', 'cancelled'].map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`).join('');
       tr.innerHTML = `
-        <td>${escapeHtml(r.patron_name || '')}</td>
-        <td>${escapeHtml(r.patron_phone || '')}</td>
-        <td>${escapeHtml(r.waste_type || '')}</td>
-        <td>${r.estimated_volume_kg ?? ''} kg</td>
-        <td>${escapeHtml(r.pickup_location || '')}</td>
-        <td><span class="badge ${r.status}">${r.status}</span></td>
-        <td>${assignedWorker ? escapeHtml(assignedWorker.name) : '—'}</td>
+        <td>${escapeHtml(r.patron_name || '')}</td><td>${escapeHtml(r.patron_phone || '')}</td>
+        <td>${escapeHtml(r.waste_type || '')}</td><td>${r.estimated_volume_kg ?? ''} kg</td>
+        <td>${escapeHtml(r.pickup_location || '')}</td><td><span class="badge ${r.status}">${r.status}</span></td>
+        <td>${r.field_workers ? escapeHtml(r.field_workers.name) : '—'}</td>
         <td>
           <div class="assign-row">
             <select class="worker-select" data-id="${r.id}">${workerOptions(r.worker_id)}</select>
             <button data-id="${r.id}" class="assign-btn">Assign</button>
-            <button data-id="${r.id}" class="auto-assign-btn" style="background:#0284c7; border-color:#0284c7;">Auto</button>
+            <button data-id="${r.id}" class="auto-assign-btn">Auto</button>
           </div>
           <select class="status-select" data-id="${r.id}" style="margin-top:6px;">${statusOptions}</select>
-        </td>
-      `;
+        </td>`;
       rowsEl.appendChild(tr);
     }
+    attachTableEvents();
+  }
 
-    rowsEl.querySelectorAll('.assign-btn').forEach(btn => {
+  function renderCards(data) {
+    const container = document.getElementById('cardsContainer');
+    const emptyEl = document.getElementById('emptyStateCard');
+    container.innerHTML = '';
+    if (data.length === 0) { emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+
+    const groups = { pending: [], assigned: [], collected: [], processed: [], cancelled: [] };
+    data.forEach(r => { if (groups[r.status]) groups[r.status].push(r); });
+
+    for (const [status, items] of Object.entries(groups)) {
+      if (items.length === 0) continue;
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'status-group';
+      groupDiv.innerHTML = `<h3>${status.toUpperCase()} (${items.length})</h3>`;
+      
+      for (const r of items) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        // Workflow progress calculation
+        const steps = ['pending', 'assigned', 'payment', 'collected', 'delivered', 'processed'];
+        let activeStep = 0;
+        if (r.status === 'assigned') activeStep = 1;
+        if (r.payment_received) activeStep = 2;
+        if (r.status === 'collected') activeStep = 3;
+        if (r.delivered_to_facility) activeStep = 4;
+        if (r.status === 'processed') activeStep = 5;
+
+        const progressHTML = `
+          <div class="workflow-steps">
+            ${steps.map((_, i) => `<div class="step ${i <= activeStep ? 'active' : ''}"></div>`).join('')}
+          </div>
+          <div class="step-labels">
+            <span>Req</span><span>Driver</span><span>Pay</span><span>Pick</span><span>Drop</span><span>Done</span>
+          </div>`;
+
+        card.innerHTML = `
+          <div class="card-header">
+            <h4>${escapeHtml(r.patron_name || 'Unknown')}</h4>
+            <span class="badge ${r.status}">${r.status}</span>
+          </div>
+          <div class="card-details">
+            <span><strong>Waste</strong>${escapeHtml(r.waste_type || '')}</span>
+            <span><strong>Volume</strong>${r.estimated_volume_kg ?? 0} kg</span>
+            <span><strong>Location</strong>${escapeHtml(r.pickup_location || '')}</span>
+            <span><strong>Driver</strong>${r.field_workers ? escapeHtml(r.field_workers.name) : 'Unassigned'}</span>
+          </div>
+          ${progressHTML}
+          <div class="card-actions">
+            <label class="checkbox-label">
+              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> Payment Received
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> Delivered to Facility
+            </label>
+          </div>
+          <div class="assign-row">
+            <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
+            <button data-id="${r.id}" class="assign-btn">Assign</button>
+            <button data-id="${r.id}" class="auto-assign-btn">Auto</button>
+          </div>`;
+        groupDiv.appendChild(card);
+      }
+      container.appendChild(groupDiv);
+    }
+    attachCardEvents();
+  }
+
+  function getWorkerOptions(selectedId) {
+    const opts = workers.map(w => {
+      const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
+      const status = w.status === 'busy' ? ' (Busy)' : '';
+      return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
+    }).join('');
+    return `<option value="">Choose worker...</option>` + opts;
+  }
+
+  async function toggleField(id, field, value) {
+    try {
+      await apiFetch(`/api/pickup-requests/${id}/update`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) });
+      await load();
+    } catch (e) { alert(e.message); }
+  }
+
+  function attachTableEvents() {
+    document.querySelectorAll('.assign-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
-        const select = rowsEl.querySelector(`.worker-select[data-id="${id}"]`);
-        const workerId = select.value;
-        if (!workerId) return;
+        const select = document.querySelector(`.worker-select[data-id="${id}"]`);
+        if (!select.value) return;
         btn.disabled = true;
         try {
-          await apiFetch(`/api/pickup-requests/${id}/assign`, {
-            method: 'PATCH',
-            body: JSON.stringify({ worker_id: workerId })
-          });
+          await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) });
           await load();
-        } catch (e) {
-          alert(e.message);
-        } finally {
-          btn.disabled = false;
-        }
+        } catch (e) { alert(e.message); } finally { btn.disabled = false; }
       });
     });
-
-    rowsEl.querySelectorAll('.auto-assign-btn').forEach(btn => {
+    document.querySelectorAll('.auto-assign-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
-        btn.disabled = true;
-        btn.textContent = 'Routing...';
+        btn.disabled = true; btn.textContent = 'Routing...';
         try {
-          const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, {
-            method: 'POST'
-          });
+          const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' });
           alert(`Success: Assigned to ${result.worker} (${result.assignmentType})`);
           await load();
-        } catch (e) {
-          alert(e.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Auto';
-        }
+        } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
       });
     });
-
-    rowsEl.querySelectorAll('.status-select').forEach(sel => {
+    document.querySelectorAll('.status-select').forEach(sel => {
       sel.addEventListener('change', async () => {
         const id = sel.dataset.id;
-        try {
-          await apiFetch(`/api/pickup-requests/${id}/status`, {
-            method: 'PATCH',
-            body: JSON.stringify({ status: sel.value })
-          });
-          await load();
-        } catch (e) {
-          alert(e.message);
-        }
+        try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: sel.value }) }); await load(); } catch (e) { alert(e.message); }
+      });
+    });
+  }
+
+  function attachCardEvents() {
+    document.querySelectorAll('.assign-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const select = document.querySelector(`.worker-select[data-id="${id}"]`);
+        if (!select.value) return;
+        btn.disabled = true;
+        try { await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) }); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; }
+      });
+    });
+    document.querySelectorAll('.auto-assign-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true; btn.textContent = 'Routing...';
+        try { const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' }); alert(`Success: Assigned to ${result.worker}`); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
       });
     });
   }
@@ -356,33 +465,18 @@
     document.getElementById('workerError').textContent = '';
     document.getElementById('addWorkerDialog').showModal();
   }
-
   async function submitAddWorker() {
     const name = document.getElementById('workerNameInput').value.trim();
     const phone = document.getElementById('workerPhoneInput').value.trim();
     const area = document.getElementById('workerAreaInput').value.trim();
-    
-    if (!name) {
-      document.getElementById('workerError').textContent = 'Name is required.';
-      return;
-    }
+    if (!name) { document.getElementById('workerError').textContent = 'Name is required.'; return; }
     try {
-      await apiFetch('/api/field-workers', {
-        method: 'POST',
-        body: JSON.stringify({ name, phone, service_area: area || null })
-      });
+      await apiFetch('/api/field-workers', { method: 'POST', body: JSON.stringify({ name, phone, service_area: area || null }) });
       document.getElementById('addWorkerDialog').close();
       await load();
-    } catch (e) {
-      document.getElementById('workerError').textContent = e.message;
-    }
+    } catch (e) { document.getElementById('workerError').textContent = e.message; }
   }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+  function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -394,33 +488,16 @@
   });
 
   async function generateAIReport() {
-    document.getElementById('reportContent').textContent = 'Analyzing data and generating report...';
+    document.getElementById('reportContent').textContent = 'Analyzing data...';
     document.getElementById('reportDialog').showModal();
-    try {
-      const result = await apiFetch('/api/reports/weekly-impact');
-      document.getElementById('reportContent').textContent = result.report;
-    } catch (e) {
-      document.getElementById('reportContent').textContent = 'Error generating report: ' + e.message;
-    }
+    try { const result = await apiFetch('/api/reports/weekly-impact'); document.getElementById('reportContent').textContent = result.report; } catch (e) { document.getElementById('reportContent').textContent = 'Error: ' + e.message; }
   }
-
   function updateFilters() {
     locationFilter = document.getElementById('locationFilter').value;
     wasteFilter = document.getElementById('wasteFilter').value;
-    load(); // Re-render the table with new filters
+    load();
   }
-
   if (getKey()) enterApp();
-
-    async function freeWorker(workerId, workerName) {
-    if (!confirm(`Are you sure you want to manually free ${workerName}? This will mark them as available.`)) return;
-    try {
-      await apiFetch(`/api/field-workers/${workerId}/reset`, { method: 'PATCH' });
-      await load();
-    } catch (e) {
-      alert(e.message);
-    }
-  }
 </script>
 </body>
 </html>
