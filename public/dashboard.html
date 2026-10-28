@@ -16,20 +16,40 @@
     --text-muted: #6B7280;
     --border: #E5E7EB;
     --sidebar-bg: #0F3D3A;
+    /* New vibrant status colors from Casa Chromatica palette */
+    --status-pending: #0C6038; /* Meadow Green */
+    --status-assigned: #2D4C39; /* Outerspace */
+    --status-collected: #808847; /* Mustard Green */
+    --status-processed: #FTD2A1; /* Peach */
+    --status-cancelled: #6C27DA; /* Crimson */
   }
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+  html, body { overflow-x: hidden; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    background: var(--bg); color: var(--text-main); 
+    display: flex; height: 100vh; overflow: hidden; 
+  }
 
-  /* Sidebar - always visible */
+  /* Sidebar - fixed width, always fully visible */
   .sidebar {
-    width: 80px; background: var(--sidebar-bg); color: #fff;
+    width: 80px; 
+    min-width: 80px;
+    max-width: 80px;
+    background: var(--sidebar-bg); color: #fff;
     display: flex; flex-direction: column; align-items: center; padding: 20px 0;
-    transition: width 0.3s ease; overflow: visible; flex-shrink: 0;
+    transition: all 0.3s ease; 
+    flex-shrink: 0;
     position: relative;
     z-index: 100;
   }
-  .sidebar.expanded { width: 260px; align-items: flex-start; padding: 20px 24px; }
+  .sidebar.expanded { 
+    width: 260px; 
+    min-width: 260px;
+    max-width: 260px;
+    align-items: flex-start; padding: 20px 24px; 
+  }
   
   .sidebar-header { 
     display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; 
@@ -81,7 +101,14 @@
   .sidebar.expanded .sidebar-footer { opacity: 1; }
 
   /* Main Content */
-  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .main-content { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    overflow: hidden; 
+    min-width: 0;
+    width: 100%;
+  }
   
   .top-bar {
     background: var(--card-bg); padding: 16px 32px;
@@ -119,7 +146,7 @@
   .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
   .section-title::before { content: ''; width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; }
 
-  /* Floating Cards with Vibrant Left Colored Strip */
+  /* Floating Cards with New Vibrant Left Colored Strip */
   .shipments-list { display: flex; flex-direction: column; gap: 20px; }
   
   .shipment-card {
@@ -131,15 +158,15 @@
   }
   .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 61, 58, 0.12); }
   
-  /* Vibrant left colored strip per status */
+  /* Vibrant left colored strip per status - Casa Chromatica palette */
   .shipment-card::before {
     content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
   }
-  .shipment-card.status-pending::before { background: #F4B13B; } /* Golden Hour - Amber */
-  .shipment-card.status-assigned::before { background: #3B82F6; } /* Vibrant Blue */
-  .shipment-card.status-collected::before { background: #8B5CF6; } /* Vibrant Purple */
-  .shipment-card.status-processed::before { background: #10B981; } /* Bright Emerald */
-  .shipment-card.status-cancelled::before { background: #E0745E; } /* Terracotta - Coral */
+  .shipment-card.status-pending::before { background: var(--status-pending); } /* Meadow Green */
+  .shipment-card.status-assigned::before { background: var(--status-assigned); } /* Outerspace */
+  .shipment-card.status-collected::before { background: var(--status-collected); } /* Mustard Green */
+  .shipment-card.status-processed::before { background: var(--status-processed); } /* Peach */
+  .shipment-card.status-cancelled::before { background: var(--status-cancelled); } /* Crimson */
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
   .card-title-group { display: flex; align-items: center; gap: 16px; }
@@ -274,9 +301,9 @@
     <div class="filters-row">
       <select id="statusFilter" class="filter-select" onchange="updateFilters()">
         <option value="all">All Statuses</option>
-        <option value="pending">Request</option>
-        <option value="assigned">Driver</option>
-        <option value="collected">Waste Collected</option>
+        <option value="pending">Pending</option>
+        <option value="assigned">Assigned</option>
+        <option value="collected">Collected</option>
         <option value="processed">Processed</option>
         <option value="cancelled">Cancelled</option>
       </select>
@@ -333,10 +360,10 @@
   let workers = [];
   
   const wasteEmojis = { 
-    'processing': '', 
-    'market': '', 
-    'restaurant': '️', 
-    'household': '', 
+    'processing': '🏭', 
+    'market': '🍌', 
+    'restaurant': '️🥘', 
+    'household': '🏘️', 
     'agriculture': '🌾', 
     'institutional': '🏫'
   };
@@ -505,9 +532,9 @@
             <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
             <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
             <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
-              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Request</option>
-              <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Driver</option>
-              <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Waste Collected</option>
+              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
+              <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Assigned</option>
+              <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Collected</option>
               <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed</option>
               <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
             </select>
