@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Grow And Feeds Patrons - Command Center</title>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
   :root {
     --primary: #0F3D3A;
@@ -32,102 +34,44 @@
   }
 
   .sidebar {
-    width: 80px; 
-    min-width: 80px;
-    max-width: 80px;
+    width: 80px; min-width: 80px; max-width: 80px;
     background: var(--sidebar-bg); color: #fff;
     display: flex; flex-direction: column; align-items: center; padding: 20px 0;
-    transition: all 0.3s ease; 
-    flex-shrink: 0;
-    position: relative;
-    z-index: 100;
-    overflow: visible;
+    transition: all 0.3s ease; flex-shrink: 0; position: relative; z-index: 100; overflow: visible;
   }
-  .sidebar.expanded { 
-    width: 260px; 
-    min-width: 260px;
-    max-width: 260px;
-    align-items: flex-start; padding: 20px 24px; 
-  }
+  .sidebar.expanded { width: 260px; min-width: 260px; max-width: 260px; align-items: flex-start; padding: 20px 24px; }
   
-  .sidebar-header { 
-    display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; 
-    justify-content: center;
-  }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; justify-content: center; }
   .sidebar.expanded .sidebar-header { justify-content: flex-start; }
-  .sidebar-header img { 
-    width: 40px; height: 40px; border-radius: 50%; object-fit: cover; 
-    flex-shrink: 0; display: block;
-  }
-  .sidebar-header h2 { 
-    font-size: 15px; font-weight: 700; white-space: nowrap; opacity: 0; 
-    transition: opacity 0.2s; line-height: 1.2;
-  }
+  .sidebar-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; display: block; }
+  .sidebar-header h2 { font-size: 15px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; line-height: 1.2; }
   .sidebar.expanded .sidebar-header h2 { opacity: 1; }
   
-  .nav-item {
-    display: flex; align-items: center; justify-content: center;
-    gap: 16px; padding: 12px; width: 100%;
-    border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
-    margin-bottom: 8px; color: rgba(255,255,255,0.7); transition: all 0.2s;
-  }
+  .nav-item { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: rgba(255,255,255,0.7); transition: all 0.2s; }
   .sidebar.expanded .nav-item { justify-content: flex-start; padding: 12px 16px; }
   .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
   .nav-icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
   .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none; }
   .sidebar.expanded .nav-text { opacity: 1; display: inline; }
   
-  .sidebar-toggle {
-    margin-top: auto; padding: 12px; width: 100%;
-    display: flex; justify-content: center; align-items: center;
-    cursor: pointer; color: rgba(255,255,255,0.7);
-    border-top: 1px solid rgba(255,255,255,0.1);
-    transition: all 0.2s;
-  }
+  .sidebar-toggle { margin-top: auto; padding: 12px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; color: rgba(255,255,255,0.7); border-top: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
   .sidebar-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
   .sidebar-toggle svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 0.3s; }
   .sidebar.expanded .sidebar-toggle svg { transform: rotate(180deg); }
-  .sidebar-toggle-text { 
-    margin-left: 12px; font-size: 13px; font-weight: 500; 
-    white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none;
-  }
+  .sidebar-toggle-text { margin-left: 12px; font-size: 13px; font-weight: 500; white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none; }
   .sidebar.expanded .sidebar-toggle-text { opacity: 1; display: inline; }
   
-  .sidebar-footer { 
-    padding: 12px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.5); 
-    text-align: center; opacity: 0; transition: opacity 0.2s; width: 100%; display: none;
-  }
+  .sidebar-footer { padding: 12px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; opacity: 0; transition: opacity 0.2s; width: 100%; display: none; }
   .sidebar.expanded .sidebar-footer { opacity: 1; display: block; }
 
-  .main-content { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-    min-width: 0;
-    width: 100%;
-  }
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; width: 100%; }
   
-  /* RESPONSIVE TOP BAR */
-  .top-bar {
-    background: var(--card-bg); padding: 16px 24px;
-    display: flex; flex-wrap: wrap; gap: 12px;
-    justify-content: space-between; align-items: center;
-    border-bottom: 1px solid var(--border);
-  }
+  .top-bar { background: var(--card-bg); padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
   .top-bar h1 { font-size: 22px; font-weight: 700; color: var(--primary); white-space: nowrap; }
-  .search-box {
-    padding: 10px 18px; border: 1px solid var(--border); border-radius: 24px;
-    font-size: 13px; width: 280px; outline: none; background: var(--bg);
-    flex-shrink: 1;
-  }
+  .search-box { padding: 10px 18px; border: 1px solid var(--border); border-radius: 24px; font-size: 13px; width: 280px; outline: none; background: var(--bg); flex-shrink: 1; }
   .top-bar-actions { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
   
-  .btn {
-    padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer;
-    font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
-    white-space: nowrap;
-  }
+  .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-primary:hover { background: var(--primary-light); }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
@@ -137,13 +81,10 @@
   .btn-reassign { background: #8B5A2B; color: #fff; }
   .btn-reassign:hover { background: #6d4620; }
 
-  /* Responsive button text */
   .btn-text-full { display: inline; }
   .btn-text-short { display: none; }
 
-  @media (max-width: 1200px) {
-    .search-box { width: 200px; }
-  }
+  @media (max-width: 1200px) { .search-box { width: 200px; } }
   @media (max-width: 1024px) {
     .top-bar { padding: 12px 16px; }
     .top-bar h1 { font-size: 18px; }
@@ -160,29 +101,30 @@
 
   .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
   
-  .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
-  .filter-select {
-    padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 13px; background: #fff; outline: none; cursor: pointer; font-weight: 500;
+  /* Map Container */
+  #map-container {
+    height: 400px;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    z-index: 1;
   }
+
+  .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
+  .filter-select { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; outline: none; cursor: pointer; font-weight: 500; }
 
   .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
   .section-title::before { content: ''; width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; }
 
   .shipments-list { display: flex; flex-direction: column; gap: 20px; }
   
-  .shipment-card {
-    background: var(--card-bg); border-radius: 16px; padding: 24px;
-    box-shadow: 0 8px 24px rgba(15, 61, 58, 0.08); border: 1px solid rgba(15, 61, 58, 0.05);
-    display: flex; flex-direction: column; gap: 20px;
-    position: relative; overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
+  .shipment-card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(15, 61, 58, 0.08); border: 1px solid rgba(15, 61, 58, 0.05); display: flex; flex-direction: column; gap: 20px; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
   .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 61, 58, 0.12); }
   
-  .shipment-card::before {
-    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
-  }
+  .shipment-card::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px; }
   .shipment-card.status-pending::before { background: var(--status-pending); }
   .shipment-card.status-assigned::before { background: var(--status-assigned); }
   .shipment-card.status-collected::before { background: var(--status-collected); }
@@ -191,18 +133,11 @@
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
   .card-title-group { display: flex; align-items: center; gap: 16px; }
-  
-  .waste-icon-box {
-    width: 48px; height: 48px; border-radius: 12px; background: #ECFDF5;
-    display: flex; align-items: center; justify-content: center; font-size: 24px;
-  }
-  
+  .waste-icon-box { width: 48px; height: 48px; border-radius: 12px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; font-size: 24px; }
   .card-title h4 { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; text-transform: capitalize; }
   .card-title p { font-size: 12px; color: var(--text-muted); font-weight: 500; }
   
-  .status-badge {
-    padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
-  }
+  .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
   .status-badge.pending { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
   .status-badge.assigned { background: #EFF6FF; color: #1E40AF; border: 1px solid #BFDBFE; }
   .status-badge.collected { background: #F5F3FF; color: #5B21B6; border: 1px solid #DDD6FE; }
@@ -217,19 +152,13 @@
   .timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 10px; }
   .timeline-track::before { content: ''; position: absolute; top: 7px; left: 0; right: 0; height: 3px; background: var(--border); z-index: 0; border-radius: 2px; }
   .timeline-progress { position: absolute; top: 7px; left: 0; height: 3px; background: var(--primary); z-index: 1; transition: width 0.4s ease; border-radius: 2px; }
-  .timeline-dot {
-    width: 17px; height: 17px; border-radius: 50%; background: var(--border); border: 3px solid #fff;
-    z-index: 2; position: relative; box-shadow: 0 0 0 1px var(--border); transition: all 0.3s ease;
-  }
+  .timeline-dot { width: 17px; height: 17px; border-radius: 50%; background: var(--border); border: 3px solid #fff; z-index: 2; position: relative; box-shadow: 0 0 0 1px var(--border); transition: all 0.3s ease; }
   .timeline-dot.active { background: var(--primary); box-shadow: 0 0 0 3px #D1FAE5; border-color: var(--primary); }
   .timeline-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
 
   .card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
   .checkbox-group { display: flex; gap: 16px; }
-  .custom-checkbox {
-    display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer;
-    padding: 8px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-weight: 500;
-  }
+  .custom-checkbox { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; padding: 8px 14px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-weight: 500; }
   .custom-checkbox input { margin: 0; cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary); }
   
   .action-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -310,12 +239,15 @@
       </button>
       <button class="btn btn-primary" onclick="openAddWorker()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        <span class="btn-text-full">Add Delivery Worker</span><span class="btn-text-short">Add</span>
+        <span class="btn-text-full">+ Add Delivery Worker</span><span class="btn-text-short">+ Add</span>
       </button>
     </div>
   </header>
 
   <div class="dashboard-scroll">
+    <!-- Map Container -->
+    <div id="map-container"></div>
+
     <div class="filters-row">
       <select id="statusFilter" class="filter-select" onchange="updateFilters()">
         <option value="all">All Statuses</option>
@@ -368,6 +300,9 @@
   </div>
 </dialog>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 <script>
   const API_BASE = '';
   let currentFilter = 'all';
@@ -375,6 +310,9 @@
   let wasteFilter = 'all';
   let searchQuery = '';
   let workers = [];
+  let map = null;
+  let zoneMarkers = [];
+  let driverMarkers = [];
   
   const wasteEmojis = { 
     'processing': '', 
@@ -393,6 +331,27 @@
     'cancelled': -1
   };
 
+  // Nairobi Zones Coordinates
+  const nairobiZones = {
+    // Markets
+    'city park market': { lat: -1.2700, lng: 36.8200, type: 'Market' },
+    'marikiti': { lat: -1.2850, lng: 36.8250, type: 'Market' },
+    'wakulima': { lat: -1.2850, lng: 36.8250, type: 'Market' },
+    'korogocho': { lat: -1.2200, lng: 36.8700, type: 'Market' },
+    'ngara': { lat: -1.2750, lng: 36.8400, type: 'Market' },
+    'githurai': { lat: -1.2100, lng: 36.8900, type: 'Market' },
+    // Industrial
+    'industrial area': { lat: -1.3100, lng: 36.8300, type: 'Industrial' },
+    'syokimau': { lat: -1.3600, lng: 36.9200, type: 'Industrial' },
+    'ngong road': { lat: -1.3100, lng: 36.7800, type: 'Industrial' },
+    // Residential
+    'westlands': { lat: -1.2650, lng: 36.8050, type: 'Residential' },
+    'eastleigh': { lat: -1.2700, lng: 36.8500, type: 'Residential' },
+    'kilimani': { lat: -1.2950, lng: 36.7800, type: 'Residential' },
+    'eastlands': { lat: -1.2900, lng: 36.8600, type: 'Residential' },
+    'kileleshwa': { lat: -1.2850, lng: 36.7700, type: 'Residential' }
+  };
+
   function getKey() { return localStorage.getItem('gf_key') || ''; }
   function saveKey() {
     const val = document.getElementById('keyInput').value.trim();
@@ -407,13 +366,113 @@
       document.getElementById('keyGate').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
       document.getElementById('sidebar').style.display = 'flex';
+      // Initialize map after container is visible
+      if (!map) {
+        initMap();
+      } else {
+        setTimeout(() => map.invalidateSize(), 100);
+      }
     } else {
       document.getElementById('keyError').textContent = 'Invalid key or server error.';
     }
   }
 
+  function initMap() {
+    // Center on Nairobi
+    map = L.map('map-container').setView([-1.286389, 36.817223], 11);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add Zone Markers
+    Object.keys(nairobiZones).forEach(zoneName => {
+      const zone = nairobiZones[zoneName];
+      const marker = L.circleMarker([zone.lat, zone.lng], {
+        radius: 8,
+        fillColor: zone.type === 'Market' ? '#F4B13B' : zone.type === 'Industrial' ? '#E0745E' : '#0F3D3A',
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map);
+
+      marker.bindPopup(`<b>${zoneName.charAt(0).toUpperCase() + zoneName.slice(1)}</b><br>Type: ${zone.type}<br><i>Click to see pickups</i>`);
+      
+      marker.on('click', () => {
+        showZonePickups(zoneName);
+      });
+
+      zoneMarkers.push({ name: zoneName, marker: marker, type: zone.type });
+    });
+  }
+
+  function updateMapMarkers(data) {
+    if (!map) return;
+
+    // Clear existing driver markers
+    driverMarkers.forEach(m => map.removeLayer(m.marker));
+    driverMarkers = [];
+
+    // Add Driver Markers based on service_area
+    workers.forEach(worker => {
+      if (worker.service_area) {
+        const areaLower = worker.service_area.toLowerCase();
+        // Find matching zone
+        const matchingZone = Object.keys(nairobiZones).find(z => areaLower.includes(z) || z.includes(areaLower));
+        
+        if (matchingZone) {
+          const zone = nairobiZones[matchingZone];
+          // Add slight random offset so multiple drivers in same area don't overlap perfectly
+          const latOffset = (Math.random() - 0.5) * 0.002;
+          const lngOffset = (Math.random() - 0.5) * 0.002;
+          
+          const driverIcon = L.divIcon({
+            className: 'custom-driver-icon',
+            html: `<div style="background-color: #10B981; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: bold;"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+
+          const marker = L.marker([zone.lat + latOffset, zone.lng + lngOffset], { icon: driverIcon }).addTo(map);
+          marker.bindPopup(`<b>Driver: ${worker.name}</b><br>Area: ${worker.service_area}<br>Vehicle: ${worker.vehicle_type || 'N/A'}<br>Status: ${worker.status}`);
+          driverMarkers.push({ name: worker.name, marker: marker });
+        }
+      }
+    });
+  }
+
+  function showZonePickups(zoneName) {
+    const zoneDisplayName = zoneName.charAt(0).toUpperCase() + zoneName.slice(1);
+    // Filter data for this zone (case-insensitive) and active statuses
+    const zonePickups = currentData.filter(r => 
+      r.pickup_location && r.pickup_location.toLowerCase().includes(zoneName) &&
+      (r.status === 'pending' || r.status === 'assigned')
+    );
+
+    let popupContent = `<b>${zoneDisplayName}</b><br><br>`;
+    
+    if (zonePickups.length === 0) {
+      popupContent += `<i>No active pickups in this area.</i>`;
+    } else {
+      popupContent += `<b>Active Pickups (${zonePickups.length}):</b><br><ul style="margin-top: 8px; padding-left: 20px;">`;
+      zonePickups.forEach(p => {
+        popupContent += `<li><b>${p.patron_name}</b> - ${p.estimated_volume_kg}kg ${p.waste_type}<br><small>Status: ${p.status}</small></li>`;
+      });
+      popupContent += `</ul>`;
+    }
+
+    // Find the zone marker and open popup
+    const zoneMarker = zoneMarkers.find(z => z.name === zoneName);
+    if (zoneMarker) {
+      zoneMarker.marker.setPopupContent(popupContent).openPopup();
+    }
+  }
+
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('expanded');
+    if (map) setTimeout(() => map.invalidateSize(), 300);
   }
 
   async function apiFetch(path, opts = {}) {
@@ -426,11 +485,12 @@
     return res.json();
   }
 
+  let currentData = [];
   async function load(silent) {
     try {
       workers = await apiFetch('/api/field-workers');
-      const data = await apiFetch('/api/pickup-requests');
-      render(data);
+      currentData = await apiFetch('/api/pickup-requests');
+      render(currentData);
       return true;
     } catch (e) { 
       if (!silent) console.error(e); 
@@ -440,8 +500,7 @@
 
   function handleSearch() {
     searchQuery = document.getElementById('searchBox').value.toLowerCase();
-    const data = JSON.parse(document.getElementById('shipmentsList').dataset.currentData || '[]');
-    render(data);
+    render(currentData);
   }
 
   function updateFilters() {
@@ -459,7 +518,6 @@
   }
 
   function render(data) {
-    document.getElementById('shipmentsList').dataset.currentData = JSON.stringify(data);
     let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
     if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
     if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
@@ -482,8 +540,7 @@
     const emptyEl = document.getElementById('emptyState');
     container.innerHTML = '';
     
-    if (filtered.length === 0) { emptyEl.style.display = 'block'; return; }
-    emptyEl.style.display = 'none';
+    if (filtered.length === 0) { emptyEl.style.display = 'block'; } else { emptyEl.style.display = 'none'; }
 
     filtered.forEach(r => {
       const card = document.createElement('div');
@@ -560,6 +617,9 @@
       `;
       container.appendChild(card);
     });
+
+    // Update map markers after rendering
+    updateMapMarkers(data);
   }
 
   function getWorkerOptions(selectedId) {
@@ -607,13 +667,7 @@
     try { 
       await apiFetch('/api/field-workers', { 
         method: 'POST', 
-        body: JSON.stringify({ 
-          name, 
-          phone: phone || null, 
-          service_area: area || null,
-          vehicle_type: vehicleType || null,
-          vehicle_plate: plate || null
-        }) 
+        body: JSON.stringify({ name, phone: phone || null, service_area: area || null, vehicle_type: vehicleType || null, vehicle_plate: plate || null }) 
       }); 
       document.getElementById('addWorkerDialog').close(); 
       await load(); 
