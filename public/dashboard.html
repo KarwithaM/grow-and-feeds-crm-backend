@@ -396,20 +396,57 @@
     return '#6B7280';
   }
 
-  function updateMapZones(data) {
+    function updateMapZones(data) {
     mapLayers.zones.forEach(m => map.removeLayer(m));
     mapLayers.zones = [];
 
     const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
-    if (uniqueLocations.length === 0) return;
+    console.log('Unique pickup locations:', uniqueLocations); // Debug log
+    
+    if (uniqueLocations.length === 0) {
+      console.log('No pickup locations found in data');
+      return;
+    }
 
     uniqueLocations.forEach(loc => {
-      const locLower = loc.toLowerCase();
-      const zoneKey = Object.keys(nairobiZones).find(z => locLower.includes(z) || z.includes(locLower));
+      const locLower = loc.toLowerCase().trim();
+      console.log('Processing location:', loc, '->', locLower);
+      
+      // Try to find matching zone - more flexible matching
+      let zoneKey = Object.keys(nairobiZones).find(z => 
+        locLower === z || 
+        locLower.includes(z) || 
+        z.includes(locLower) ||
+        // Handle common variations
+        locLower.replace(/\s+/g, '') === z.replace(/\s+/g, '') ||
+        z.replace(/\s+/g, '').includes(locLower.replace(/\s+/g, ''))
+      );
+      
+      // If no match found, try partial word matching
+      if (!zoneKey) {
+        const locWords = locLower.split(/[\s,_-]+/);
+        for (const word of locWords) {
+          if (word.length > 2) { // Skip very short words
+            zoneKey = Object.keys(nairobiZones).find(z => 
+              z.includes(word) || word.includes(z)
+            );
+            if (zoneKey) {
+              console.log(`Found partial match: "${loc}" -> "${zoneKey}" via word "${word}"`);
+              break;
+            }
+          }
+        }
+      }
       
       if (zoneKey) {
         const zone = nairobiZones[zoneKey];
-        const pickupsAtLoc = data.filter(r => r.pickup_location && r.pickup_location.toLowerCase().includes(zoneKey));
+        const pickupsAtLoc = data.filter(r => {
+          const rLoc = (r.pickup_location || '').toLowerCase().trim();
+          return rLoc === locLower || rLoc.includes(zoneKey) || zoneKey.includes(rLoc);
+        });
+        
+        console.log(`Location "${loc}" matched to zone "${zoneKey}", found ${pickupsAtLoc.length} pickups`);
+        
         let dominantWaste = pickupsAtLoc[0]?.waste_type || 'unknown';
         const color = getWasteColor(dominantWaste);
         
@@ -430,8 +467,12 @@
         
         marker.bindPopup(popupContent);
         mapLayers.zones.push(marker);
+      } else {
+        console.warn(`Could not find zone match for location: "${loc}"`);
       }
     });
+    
+    console.log('Total zone markers created:', mapLayers.zones.length);
   }
 
   function updateMapDrivers() {
