@@ -471,6 +471,57 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   if (!worker) return res.status(404).json({ error: 'field worker not found' });
   if (worker.status !== 'available') return res.status(400).json({ error: 'Field worker is not available' });
 
+  const { data: request, error: reqError } = await supabase
+    .from('pickup_requests')
+    .select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, worker_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
+
+  // FREE OLD WORKER IF REASSIGNING
+  if (request.worker_id && request.worker_id !== workerId) {
+    await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
+    await logPickupEvent(id, 'reassigned', `Reassigned from previous worker to ${worker.name}`);
+  } else {
+    await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
+  }
+
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .update({
+      worker_id: workerId,
+      status: 'assigned',
+      updated_at: new Date().toISOString(),
+      ...timestampForStatus('assigned')
+    })
+    .eq('id', id)
+    .select('*, field_workers(id, name, phone, status)')
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
+
+  if (worker.phone) {
+    await sendWhatsAppAssignment(
+      normalizePhone(worker.phone),
+      request.patron_name,
+      request.pickup_location,
+      request.waste_type,
+      request.estimated_volume_kg,
+      id
+    );
+  }
+
+  if (request.patron_phone) {
+    const patronMessage = `Update: A collection team has been assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
+    await sendWhatsAppMessage(request.patron_phone, patronMessage);
+  }
+
+  res.json(data);
+});
+
   // ADDED: patron_phone to the select list
   const { data: request, error: reqError } = await supabase
     .from('pickup_requests')
