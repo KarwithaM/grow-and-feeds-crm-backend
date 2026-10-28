@@ -266,7 +266,6 @@
     'mini_truck': '🚛', 
     'trailer': '🚍' 
   };
-
   const nairobiZones = {
     'city park market': { lat: -1.2700, lng: 36.8200 },
     'marikiti': { lat: -1.2850, lng: 36.8250 },
@@ -294,7 +293,11 @@
     'embakasi': { lat: -1.3200, lng: 36.9200 },
     'kawangware': { lat: -1.2900, lng: 36.7300 },
     'mutuini': { lat: -1.2700, lng: 36.7200 },
-    'kabiria': { lat: -1.2800, lng: 36.7200 }
+    'kabiria': { lat: -1.2800, lng: 36.7200 },
+    // NEW ZONES
+    'kirinyaga': { lat: -1.2833, lng: 36.8219 },
+    'kiambaa': { lat: -1.1833, lng: 36.8333 },
+    'marimanti': { lat: -0.5167, lng: 37.4500 }
   };
 
   const facilities = [
@@ -396,12 +399,12 @@
     return '#6B7280';
   }
 
-    function updateMapZones(data) {
+      function updateMapZones(data) {
     mapLayers.zones.forEach(m => map.removeLayer(m));
     mapLayers.zones = [];
 
     const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
-    console.log('Unique pickup locations:', uniqueLocations); // Debug log
+    console.log('Unique pickup locations:', uniqueLocations);
     
     if (uniqueLocations.length === 0) {
       console.log('No pickup locations found in data');
@@ -412,28 +415,48 @@
       const locLower = loc.toLowerCase().trim();
       console.log('Processing location:', loc, '->', locLower);
       
-      // Try to find matching zone - more flexible matching
-      let zoneKey = Object.keys(nairobiZones).find(z => 
-        locLower === z || 
-        locLower.includes(z) || 
-        z.includes(locLower) ||
-        // Handle common variations
-        locLower.replace(/\s+/g, '') === z.replace(/\s+/g, '') ||
-        z.replace(/\s+/g, '').includes(locLower.replace(/\s+/g, ''))
-      );
+      let zoneKey = null;
       
-      // If no match found, try partial word matching
+      // Strategy 1: Exact match (case-insensitive)
+      zoneKey = Object.keys(nairobiZones).find(z => z === locLower);
+      
+      // Strategy 2: Direct contains (but require significant overlap)
       if (!zoneKey) {
-        const locWords = locLower.split(/[\s,_-]+/);
+        zoneKey = Object.keys(nairobiZones).find(z => {
+          const zLower = z.toLowerCase();
+          // Require at least 50% of the shorter string to match
+          const shorter = zLower.length < locLower.length ? zLower : locLower;
+          const longer = zLower.length >= locLower.length ? zLower : locLower;
+          return longer.includes(shorter) && shorter.length >= 4;
+        });
+      }
+      
+      // Strategy 3: Handle compound names like "city park market, parklands"
+      if (!zoneKey) {
+        const parts = locLower.split(/[,]+/).map(p => p.trim());
+        for (const part of parts) {
+          const found = Object.keys(nairobiZones).find(z => z === part || z.includes(part));
+          if (found) {
+            zoneKey = found;
+            console.log(`Found compound match: "${loc}" -> "${zoneKey}" via part "${part}"`);
+            break;
+          }
+        }
+      }
+      
+      // Strategy 4: Word-by-word matching (but avoid false positives)
+      if (!zoneKey) {
+        const locWords = locLower.split(/[\s,_-]+/).filter(w => w.length > 3);
         for (const word of locWords) {
-          if (word.length > 2) { // Skip very short words
-            zoneKey = Object.keys(nairobiZones).find(z => 
-              z.includes(word) || word.includes(z)
-            );
-            if (zoneKey) {
-              console.log(`Found partial match: "${loc}" -> "${zoneKey}" via word "${word}"`);
-              break;
-            }
+          const found = Object.keys(nairobiZones).find(z => {
+            const zWords = z.split(/[\s,_-]+/);
+            // Require exact word match, not just substring
+            return zWords.some(zw => zw === word || zw.startsWith(word));
+          });
+          if (found) {
+            zoneKey = found;
+            console.log(`Found word match: "${loc}" -> "${zoneKey}" via word "${word}"`);
+            break;
           }
         }
       }
