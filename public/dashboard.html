@@ -566,10 +566,10 @@
     return res.json();
   }
 
-  // UPDATED: Only use mockDrivers, removing real workers (Stacy, Festus, Toto, etc.) from view
+    // FIXED: Fetch real workers from Supabase database
   async function load(silent) {
     try {
-      workers = [...mockDrivers];
+      workers = await apiFetch('/api/field-workers'); // <--- NOW IT READS FROM SUPABASE
       currentData = await apiFetch('/api/pickup-requests');
       render(currentData);
       return true;
