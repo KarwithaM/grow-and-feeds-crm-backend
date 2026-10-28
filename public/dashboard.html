@@ -306,31 +306,34 @@
     { name: 'Kibera BSF Hub', locationKey: 'kibera' }
   ];
 
-  // Mock Drivers
+    // Mock Drivers - One vehicle per zone, all with full details
   const mockDrivers = [
+    // NORTH NAIROBI
     { id: 'mock-n1', name: 'James Mwangi', service_area: 'Kasarani', vehicle_type: 'handcart', vehicle_plate: 'KCA 101A', status: 'available' },
-    { id: 'mock-n2', name: 'Peter Ochieng', service_area: 'Kasarani', vehicle_type: 'handcart', vehicle_plate: 'KCA 102B', status: 'available' },
-    { id: 'mock-n3', name: 'Samuel Kiprop', service_area: 'Garden Estate', vehicle_type: 'pickup', vehicle_plate: 'KCB 201C', status: 'available' },
-    { id: 'mock-n4', name: 'David Njoroge', service_area: 'Garden Estate', vehicle_type: 'pickup', vehicle_plate: 'KCB 202D', status: 'busy' },
-    { id: 'mock-n5', name: 'Michael Wainaina', service_area: 'Runda', vehicle_type: 'mini_truck', vehicle_plate: 'KCC 301E', status: 'available' },
+    { id: 'mock-n2', name: 'Samuel Kiprop', service_area: 'Garden Estate', vehicle_type: 'pickup', vehicle_plate: 'KCB 201C', status: 'available' },
+    { id: 'mock-n3', name: 'Michael Wainaina', service_area: 'Runda', vehicle_type: 'mini_truck', vehicle_plate: 'KCC 301E', status: 'available' },
+    
+    // SOUTH NAIROBI
     { id: 'mock-s1', name: 'John Kamau', service_area: 'Langata', vehicle_type: 'handcart', vehicle_plate: 'KCD 401F', status: 'available' },
-    { id: 'mock-s2', name: 'Joseph Mutua', service_area: 'Langata', vehicle_type: 'handcart', vehicle_plate: 'KCD 402G', status: 'busy' },
-    { id: 'mock-s3', name: 'Daniel Kariuki', service_area: 'Karen', vehicle_type: 'pickup', vehicle_plate: 'KCE 501H', status: 'available' },
-    { id: 'mock-s4', name: 'Patrick Omondi', service_area: 'Karen', vehicle_type: 'pickup', vehicle_plate: 'KCE 502I', status: 'available' },
-    { id: 'mock-s5', name: 'Stephen Muthomi', service_area: 'South B', vehicle_type: 'mini_truck', vehicle_plate: 'KCF 601J', status: 'available' },
+    { id: 'mock-s2', name: 'Daniel Kariuki', service_area: 'Karen', vehicle_type: 'pickup', vehicle_plate: 'KCE 501H', status: 'available' },
+    { id: 'mock-s3', name: 'Stephen Muthomi', service_area: 'South B', vehicle_type: 'mini_truck', vehicle_plate: 'KCF 601J', status: 'available' },
+    
+    // EAST NAIROBI
     { id: 'mock-e1', name: 'Francis Odhiambo', service_area: 'Buruburu', vehicle_type: 'handcart', vehicle_plate: 'KCG 701K', status: 'available' },
-    { id: 'mock-e2', name: 'George Wekesa', service_area: 'Buruburu', vehicle_type: 'handcart', vehicle_plate: 'KCG 702L', status: 'available' },
-    { id: 'mock-e3', name: 'Henry Kibet', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 801M', status: 'busy' },
-    { id: 'mock-e4', name: 'Isaac Rotich', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 802N', status: 'available' },
-    { id: 'mock-e5', name: 'Jacob Chebet', service_area: 'Embakasi', vehicle_type: 'mini_truck', vehicle_plate: 'KCI 901O', status: 'available' },
-    { id: 'mock-w1', name: 'Kevin Langat', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 111P', status: 'available' },
-    { id: 'mock-w2', name: 'Leonard Bett', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 112Q', status: 'available' },
-    { id: 'mock-w3', name: 'Martin Kosgei', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 221R', status: 'available' },
-    { id: 'mock-w4', name: 'Nelson Rono', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 222S', status: 'busy' },
-    { id: 'mock-w5', name: 'Oscar Kipchoge', service_area: 'Kabiria', vehicle_type: 'mini_truck', vehicle_plate: 'KCL 331T', status: 'available' },
+    { id: 'mock-e2', name: 'Henry Kibet', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 801M', status: 'available' },
+    { id: 'mock-e3', name: 'Jacob Chebet', service_area: 'Embakasi', vehicle_type: 'mini_truck', vehicle_plate: 'KCI 901O', status: 'available' },
+    
+    // WEST NAIROBI (one vehicle per zone)
+    { id: 'mock-w1', name: 'Leonard Bett', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 112Q', status: 'available' },
+    { id: 'mock-w2', name: 'Martin Kosgei', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 221R', status: 'available' },
+    { id: 'mock-w3', name: 'Oscar Kipchoge', service_area: 'Kabiria', vehicle_type: 'mini_truck', vehicle_plate: 'KCL 331T', status: 'available' },
+    { id: 'mock-w4', name: 'Grace Wanjiku', service_area: 'Kileleshwa', vehicle_type: 'mini_truck', vehicle_plate: 'KCN 551V', status: 'available' },
+    { id: 'mock-w5', name: 'Robert Kiprop', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCO 661W', status: 'available' },
+    
+    // CENTRAL NAIROBI
     { id: 'mock-c1', name: 'Paul Maina', service_area: 'Ngara', vehicle_type: 'trailer', vehicle_plate: 'KCM 441U', status: 'available' }
   ];
-
+  
   // Custom Icons - UPDATED
   const facilityIcon = L.divIcon({
     className: 'custom-facility-icon',
