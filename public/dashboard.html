@@ -260,10 +260,15 @@
   const wasteEmojis = { 'processing': '', 'market': '', 'restaurant': '️', 'household': '', 'agriculture': '', 'institutional': '' };
   const statusToStep = { 'pending': 0, 'assigned': 1, 'collected': 3, 'processed': 5, 'cancelled': -1 };
 
-  // Vehicle emoji mapping
-  const vehicleEmojis = { 'handcart': '', 'pickup': '', 'mini_truck': '', 'trailer': '🚛' };
+  // Vehicle emoji mapping - UPDATED
+  const vehicleEmojis = { 
+    'handcart': '🛺', 
+    'pickup': '🛻', 
+    'mini_truck': '🚛', 
+    'trailer': '🚍' 
+  };
 
-  // Nairobi Zones Coordinates (Expanded for Mock Drivers)
+  // Nairobi Zones Coordinates
   const nairobiZones = {
     'city park market': { lat: -1.2700, lng: 36.8200 },
     'marikiti': { lat: -1.2850, lng: 36.8250 },
@@ -280,7 +285,6 @@
     'eastlands': { lat: -1.2900, lng: 36.8600 },
     'kileleshwa': { lat: -1.2850, lng: 36.7700 },
     'kibera': { lat: -1.3100, lng: 36.7800 },
-    // Mock Driver Locations
     'kasarani': { lat: -1.2200, lng: 36.9000 },
     'garden estate': { lat: -1.2300, lng: 36.8500 },
     'runda': { lat: -1.2300, lng: 36.8000 },
@@ -327,22 +331,21 @@
     { id: 'mock-c1', name: 'Paul Maina', service_area: 'Ngara', vehicle_type: 'trailer', vehicle_plate: 'KCM 441U', status: 'available' }
   ];
 
-  // Custom Icons
+  // Custom Icons - UPDATED
   const facilityIcon = L.divIcon({
     className: 'custom-facility-icon',
-    html: '<div style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"></div>',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16]
+    html: '<div style="font-size: 36px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">🏭</div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
   });
 
   function getDriverIcon(vehicleType) {
     const emoji = vehicleEmojis[vehicleType] || '🚛';
-    const bgColor = vehicleType === 'trailer' ? '#E0745E' : vehicleType === 'mini_truck' ? '#F4B13B' : vehicleType === 'pickup' ? '#0F3D3A' : '#6B6F4E';
     return L.divIcon({
       className: 'custom-driver-icon',
-      html: `<div style="background-color: ${bgColor}; width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 18px;">${emoji}</div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+      html: `<div style="font-size: 28px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));">${emoji}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
     });
   }
 
@@ -372,7 +375,7 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add Facility Markers
+    // Add Facility Markers - FIXED: Added emoji to icon
     facilities.forEach(fac => {
       const zone = nairobiZones[fac.locationKey];
       if (zone) {
@@ -387,12 +390,12 @@
   }
 
   function getWasteColor(wasteType) {
-    if (!wasteType) return '#6B7280'; // Grey default
+    if (!wasteType) return '#6B7280';
     const wt = wasteType.toLowerCase();
-    if (wt.includes('agriculture') || wt.includes('manure')) return '#8A5A2B'; // Brown
-    if (wt.includes('processing') || wt.includes('market') || wt.includes('fruit')) return '#F4B13B'; // Yellow
-    if (wt.includes('restaurant') || wt.includes('household') || wt.includes('cooked')) return '#0F3D3A'; // Dark Green
-    if (wt.includes('institutional')) return '#6FA9BB'; // Blue
+    if (wt.includes('agriculture') || wt.includes('manure')) return '#8A5A2B';
+    if (wt.includes('processing') || wt.includes('market') || wt.includes('fruit')) return '#F4B13B';
+    if (wt.includes('restaurant') || wt.includes('household') || wt.includes('cooked')) return '#0F3D3A';
+    if (wt.includes('institutional')) return '#6FA9BB';
     return '#6B7280';
   }
 
@@ -409,8 +412,6 @@
       
       if (zoneKey) {
         const zone = nairobiZones[zoneKey];
-        
-        // Find dominant waste type for coloring
         const pickupsAtLoc = data.filter(r => r.pickup_location && r.pickup_location.toLowerCase().includes(zoneKey));
         let dominantWaste = pickupsAtLoc[0]?.waste_type || 'unknown';
         const color = getWasteColor(dominantWaste);
