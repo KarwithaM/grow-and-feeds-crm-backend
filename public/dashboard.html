@@ -6,13 +6,12 @@
 <title>Grow And Feeds Patrons - Command Center</title>
 <style>
   :root {
-    /* Phase 2 Palette */
-    --primary: #0F3D3A; /* Deep Forest */
-    --secondary: #F4B13B; /* Golden Hour */
-    --tertiary: #E0745E; /* Terracotta */
-    --bg: #F2E6D6; /* Warm Sand */
+    --primary: #0F3D3A;
+    --secondary: #F4B13B;
+    --tertiary: #E0745E;
+    --bg: #F2E6D6;
     --card-bg: #FFFFFF;
-    --text-main: #223300; /* Dark Green */
+    --text-main: #223300;
     --text-muted: #6B7280;
     --border: #E5E7EB;
   }
@@ -20,14 +19,13 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
-  /* Qwen-style Sidebar */
   .sidebar {
     width: 64px; background: var(--primary); color: #fff;
     display: flex; flex-direction: column; align-items: center; padding: 16px 0;
-    transition: width 0.3s ease; overflow: hidden;
+    transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
   }
   .sidebar.expanded { width: 240px; align-items: flex-start; padding: 16px 20px; }
-  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; cursor: pointer; }
   .sidebar-header img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
   .sidebar-header h2 { font-size: 14px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
   .sidebar.expanded .sidebar-header h2 { opacity: 1; }
@@ -42,11 +40,10 @@
   .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
   .sidebar.expanded .nav-text { opacity: 1; }
 
-  /* Main Content */
   .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .top-bar { background: var(--card-bg); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
   .top-bar h1 { font-size: 20px; font-weight: 700; color: var(--primary); }
-  .top-bar-actions { display: flex; gap: 12px; }
+  .top-bar-actions { display: flex; gap: 12px; align-items: center; }
   
   .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
   .btn-primary { background: var(--primary); color: #fff; }
@@ -54,10 +51,14 @@
   .btn-accent { background: var(--secondary); color: var(--primary); }
   .btn-accent:hover { background: #d99a2a; }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+  .btn-outline:hover { background: var(--bg); }
+
+  .filters-row { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; padding: 0 32px; }
+  .filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; outline: none; }
+  .filter-select:focus { border-color: var(--primary); }
 
   .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
   
-  /* Floating Cards */
   .shipments-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
   .shipment-card {
     background: var(--card-bg); border-radius: 16px; padding: 20px;
@@ -66,7 +67,6 @@
   }
   .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(15, 61, 58, 0.12); }
   
-  /* Status Specific Card Borders/Accents */
   .shipment-card.status-pending { border-top: 4px solid var(--secondary); }
   .shipment-card.status-assigned { border-top: 4px solid var(--primary); }
   .shipment-card.status-collected { border-top: 4px solid #8B5CF6; }
@@ -87,12 +87,20 @@
   .detail-item label { display: block; font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 2px; }
   
   .card-actions { display: flex; gap: 8px; margin-top: auto; }
-  .card-actions select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
-  
-  /* Login Gate */
+  .card-actions select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; outline: none; }
+  .card-actions select:focus { border-color: var(--primary); }
+
   #keyGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
   .gate-box { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
   .gate-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; object-fit: cover; }
+  .gate-box input { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+  .gate-box input:focus { border-color: var(--primary); }
+
+  dialog { border: none; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  dialog input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid var(--border); border-radius: 6px; outline: none; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -101,13 +109,14 @@
   <div class="gate-box">
     <img src="logo.png" alt="Logo">
     <h2 style="color: var(--primary); margin-bottom: 20px;">Grow And Feeds Patrons</h2>
-    <input id="keyInput" type="password" placeholder="Access Key" style="width:100%; padding:12px; margin-bottom:16px; border:1px solid var(--border); border-radius:8px;" />
+    <input id="keyInput" type="password" placeholder="Access Key" />
     <button class="btn btn-primary" style="width:100%;" onclick="saveKey()">Enter Command Center</button>
+    <div id="keyError" style="color: #DC2626; font-size: 13px; margin-top: 12px;"></div>
   </div>
 </div>
 
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-header" onclick="document.getElementById('sidebar').classList.toggle('expanded')">
+  <div class="sidebar-header" onclick="toggleSidebar()">
     <img src="logo.png" alt="Logo">
     <h2>Grow And Feeds Patrons</h2>
   </div>
@@ -121,73 +130,245 @@
     <h1>Operations Dashboard</h1>
     <div class="top-bar-actions">
       <button class="btn btn-accent" onclick="generateAIReport()">AI Report</button>
+      <button class="btn btn-outline" onclick="openAddWorker()">+ Add Worker</button>
       <button class="btn btn-primary" onclick="load()">Refresh</button>
     </div>
   </header>
 
+  <div class="filters-row">
+    <select id="statusFilter" class="filter-select" onchange="updateFilters()">
+      <option value="all">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="assigned">Assigned</option>
+      <option value="collected">Collected</option>
+      <option value="processed">Processed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
+    <select id="wasteFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
+  </div>
+
   <div class="dashboard-scroll">
     <div id="shipmentsList" class="shipments-list"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">No shipments match your filters.</div>
   </div>
 </main>
 
+<dialog id="addWorkerDialog">
+  <h3 style="margin-top:0; color: var(--primary);">Add Field Worker</h3>
+  <input id="workerNameInput" type="text" placeholder="Full Name" />
+  <input id="workerPhoneInput" type="text" placeholder="Phone Number" />
+  <input id="workerAreaInput" type="text" placeholder="Service Area" />
+  <div id="workerError" style="color: #DC2626; font-size: 13px;"></div>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitAddWorker()">Save</button>
+  </div>
+</dialog>
+
+<dialog id="reportDialog">
+  <h3 style="margin-top:0; color: var(--primary);">Weekly AI Impact Report</h3>
+  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; background: var(--bg); padding: 16px; border-radius: 8px; min-height: 120px; border: 1px solid var(--border);">Analyzing...</div>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="document.getElementById('reportDialog').close()">Close</button>
+  </div>
+</dialog>
+
 <script>
   const API_BASE = '';
+  let currentFilter = 'all';
+  let locationFilter = 'all';
+  let wasteFilter = 'all';
   let workers = [];
-  const wasteEmojis = { 'processing': '', 'market': '🛒', 'restaurant': '🍽️', 'household': '🏠', 'agriculture': '', 'institutional': '🏫' };
+  const wasteEmojis = { 'processing': '🏭', 'market': '🛒', 'restaurant': '🍽️', 'household': '🏠', 'agriculture': '🌾', 'institutional': '🏫' };
 
   function getKey() { return localStorage.getItem('gf_key') || ''; }
-  function saveKey() { localStorage.setItem('gf_key', document.getElementById('keyInput').value); enterApp(); }
-  async function enterApp() { if(await load()) { document.getElementById('keyGate').style.display='none'; document.getElementById('app').style.display='flex'; document.getElementById('sidebar').style.display='flex'; } }
+  function saveKey() {
+    const val = document.getElementById('keyInput').value.trim();
+    if (!val) return;
+    localStorage.setItem('gf_key', val);
+    document.getElementById('keyError').textContent = '';
+    enterApp();
+  }
   
-  async function apiFetch(path, opts={}) {
-    const res = await fetch(API_BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'x-api-key': getKey() } });
-    if(res.status===401) location.reload();
+  async function enterApp() {
+    const ok = await load(true);
+    if (ok) {
+      document.getElementById('keyGate').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.getElementById('sidebar').style.display = 'flex';
+    }
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('expanded');
+  }
+  
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(API_BASE + path, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getKey(), ...(opts.headers || {}) }
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('gf_key');
+      location.reload();
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Request failed');
+    }
     return res.json();
   }
 
-  async function load() {
-    workers = await apiFetch('/api/field-workers').catch(()=>[]);
-    const data = await apiFetch('/api/pickup-requests').catch(()=>[]);
-    render(data);
-    return true;
+  async function load(silent) {
+    try {
+      workers = await apiFetch('/api/field-workers');
+      const data = await apiFetch('/api/pickup-requests');
+      render(data);
+      return true;
+    } catch (e) {
+      if (!silent) {
+        console.error(e);
+        alert('Failed to load data: ' + e.message);
+      }
+      return false;
+    }
+  }
+
+  function updateFilters() {
+    currentFilter = document.getElementById('statusFilter').value;
+    locationFilter = document.getElementById('locationFilter').value;
+    wasteFilter = document.getElementById('wasteFilter').value;
+    load();
   }
 
   function render(data) {
     const container = document.getElementById('shipmentsList');
+    const emptyEl = document.getElementById('emptyState');
     container.innerHTML = '';
-    data.forEach(r => {
+
+    let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
+    if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
+    if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
+
+    // Populate filters
+    const locSelect = document.getElementById('locationFilter');
+    const wasteSelect = document.getElementById('wasteFilter');
+    if (locSelect.options.length <= 1) {
+      [...new Set(data.map(r => r.pickup_location).filter(Boolean))].forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        locSelect.appendChild(opt);
+      });
+    }
+    if (wasteSelect.options.length <= 1) {
+      [...new Set(data.map(r => r.waste_type).filter(Boolean))].forEach(waste => {
+        const opt = document.createElement('option');
+        opt.value = waste;
+        opt.textContent = waste;
+        wasteSelect.appendChild(opt);
+      });
+    }
+
+    if (filtered.length === 0) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    filtered.forEach(r => {
       const card = document.createElement('div');
       card.className = `shipment-card status-${r.status}`;
-      const emoji = wasteEmojis[r.waste_type] || '📦';
+      const emoji = wasteEmojis[r.waste_type] || '🚮';  
       
       card.innerHTML = `
         <div class="card-header">
           <div style="display:flex; gap:12px; align-items:center;">
             <div class="waste-emoji">${emoji}</div>
             <div class="card-title">
-              <h4>${r.patron_name}</h4>
-              <div style="font-size:12px; color:var(--text-muted);">${r.pickup_location}</div>
+              <h4>${r.patron_name || 'Unknown'}</h4>
+              <div style="font-size:12px; color:var(--text-muted);">${r.pickup_location || 'No location'}</div>
             </div>
           </div>
           <span class="status-badge ${r.status}">${r.status}</span>
         </div>
         <div class="card-details">
-          <div class="detail-item"><label>Waste Stream</label><span>${r.waste_type}</span></div>
-          <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg} kg</span></div>
+          <div class="detail-item"><label>Waste Stream</label><span>${r.waste_type || 'N/A'}</span></div>
+          <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg || 0} kg</span></div>
           <div class="detail-item"><label>Vehicle</label><span>${r.vehicle_type || 'Pending'}</span></div>
           <div class="detail-item"><label>Driver</label><span>${r.field_workers?.name || 'Unassigned'}</span></div>
         </div>
         <div class="card-actions">
-          <select><option>Update Status</option><option value="collected">Collected</option><option value="processed">Processed</option></select>
-          <button class="btn btn-primary" style="font-size:12px;">Save</button>
+          <select onchange="changeStatus('${r.id}', this.value)">
+            <option value="">Update Status</option>
+            <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Assigned</option>
+            <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Collected</option>
+            <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed</option>
+            <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+          <button class="btn btn-primary" style="font-size:12px;" onclick="load()">Save</button>
         </div>
       `;
       container.appendChild(card);
     });
   }
 
-  async function generateAIReport() { alert('AI Report feature active. Check console for data.'); }
-  if(getKey()) enterApp();
+  async function changeStatus(id, status) {
+    if (!status) return;
+    try {
+      await apiFetch(`/api/pickup-requests/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      });
+      await load();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function openAddWorker() {
+    document.getElementById('workerNameInput').value = '';
+    document.getElementById('workerPhoneInput').value = '';
+    document.getElementById('workerAreaInput').value = '';
+    document.getElementById('workerError').textContent = '';
+    document.getElementById('addWorkerDialog').showModal();
+  }
+
+  async function submitAddWorker() {
+    const name = document.getElementById('workerNameInput').value.trim();
+    const phone = document.getElementById('workerPhoneInput').value.trim();
+    const area = document.getElementById('workerAreaInput').value.trim();
+    if (!name) {
+      document.getElementById('workerError').textContent = 'Name is required.';
+      return;
+    }
+    try {
+      await apiFetch('/api/field-workers', {
+        method: 'POST',
+        body: JSON.stringify({ name, phone, service_area: area || null })
+      });
+      document.getElementById('addWorkerDialog').close();
+      await load();
+    } catch (e) {
+      document.getElementById('workerError').textContent = e.message;
+    }
+  }
+
+  async function generateAIReport() {
+    document.getElementById('reportContent').textContent = 'Analyzing data...';
+    document.getElementById('reportDialog').showModal();
+    try {
+      const result = await apiFetch('/api/reports/weekly-impact');
+      document.getElementById('reportContent').textContent = result.report;
+    } catch (e) {
+      document.getElementById('reportContent').textContent = 'Error: ' + e.message;
+    }
+  }
+
+  if (getKey()) enterApp();
 </script>
 </body>
 </html>
