@@ -118,8 +118,7 @@ async function sendWhatsAppAssignment(to, patronName, location, wasteType, volum
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
-  // Plain text version (much higher delivery rate in Dev mode)
-  const bodyText = `🚛 *NEW PICKUP ASSIGNED*\n\n👤 Patron: ${patronName}\n📍 Location: ${location}\n🗑️ Waste: ${wasteType}\n⚖️ Volume: ${volume} kg\n🚚 Vehicle: ${vehicleType}\n\nReply with "PICKED" or "FAILED" to update status.\nRequest ID: ${requestId}`;
+  const bodyText = `NEW PICKUP ASSIGNED\n\nPatron: ${patronName}\nLocation: ${location}\nWaste: ${wasteType}\nVolume: ${volume} kg\nVehicle Required: ${vehicleType}\n\nPlease tap a button to update status:`;
 
   try {
     const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
@@ -129,18 +128,26 @@ async function sendWhatsAppAssignment(to, patronName, location, wasteType, volum
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: to,
-        type: 'text',
-        text: { body: bodyText }
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: bodyText },
+          action: {
+            buttons: [
+              { type: 'reply', reply: { id: `picked_${requestId}`, title: 'Picked Up' } },
+              { type: 'reply', reply: { id: `failed_${requestId}`, title: 'Not Picked' } }
+            ]
+          }
+        }
       })
     });
     const result = await response.json();
-    console.log('WhatsApp Assignment Sent (Plain Text):', result);
+    console.log('WhatsApp Assignment Sent:', result);
     return result;
   } catch (err) {
     console.error('Error sending WhatsApp assignment:', err);
   }
 }
-
 app.get('/api/whatsapp/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
