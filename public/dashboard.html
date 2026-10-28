@@ -103,7 +103,7 @@
   
   /* Map Container */
   #map-container {
-    height: 400px;
+    height: 450px;
     width: 100%;
     border-radius: 16px;
     overflow: hidden;
@@ -111,6 +111,12 @@
     border: 1px solid var(--border);
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     z-index: 1;
+  }
+
+  /* Custom Map Icons */
+  .custom-facility-icon, .custom-driver-icon, .custom-zone-icon {
+    background: transparent !important;
+    border: none !important;
   }
 
   .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
@@ -310,9 +316,9 @@
   let wasteFilter = 'all';
   let searchQuery = '';
   let workers = [];
+  let currentData = [];
   let map = null;
-  let zoneMarkers = [];
-  let driverMarkers = [];
+  let mapLayers = { facilities: [], zones: [], drivers: [] };
   
   const wasteEmojis = { 
     'processing': '', 
@@ -324,33 +330,49 @@
   };
 
   const statusToStep = {
-    'pending': 0,
-    'assigned': 1,
-    'collected': 3,
-    'processed': 5,
-    'cancelled': -1
+    'pending': 0, 'assigned': 1, 'collected': 3, 'processed': 5, 'cancelled': -1
   };
 
-  // Nairobi Zones Coordinates
+  // Nairobi Zones Coordinates (Lookup Table)
   const nairobiZones = {
-    // Markets
     'city park market': { lat: -1.2700, lng: 36.8200, type: 'Market' },
     'marikiti': { lat: -1.2850, lng: 36.8250, type: 'Market' },
     'wakulima': { lat: -1.2850, lng: 36.8250, type: 'Market' },
     'korogocho': { lat: -1.2200, lng: 36.8700, type: 'Market' },
     'ngara': { lat: -1.2750, lng: 36.8400, type: 'Market' },
     'githurai': { lat: -1.2100, lng: 36.8900, type: 'Market' },
-    // Industrial
     'industrial area': { lat: -1.3100, lng: 36.8300, type: 'Industrial' },
     'syokimau': { lat: -1.3600, lng: 36.9200, type: 'Industrial' },
     'ngong road': { lat: -1.3100, lng: 36.7800, type: 'Industrial' },
-    // Residential
     'westlands': { lat: -1.2650, lng: 36.8050, type: 'Residential' },
     'eastleigh': { lat: -1.2700, lng: 36.8500, type: 'Residential' },
     'kilimani': { lat: -1.2950, lng: 36.7800, type: 'Residential' },
     'eastlands': { lat: -1.2900, lng: 36.8600, type: 'Residential' },
-    'kileleshwa': { lat: -1.2850, lng: 36.7700, type: 'Residential' }
+    'kileleshwa': { lat: -1.2850, lng: 36.7700, type: 'Residential' },
+    'kibera': { lat: -1.3100, lng: 36.7800, type: 'Residential' } // Added Kibera
   };
+
+  // Facility Hubs
+  const facilities = [
+    { name: 'Korogocho Hub', locationKey: 'korogocho', desc: 'Caters to Eastlands' },
+    { name: 'City Park Hub', locationKey: 'city park market', desc: 'Caters to Central & North Nairobi' },
+    { name: 'Kibera Hub', locationKey: 'kibera', desc: 'Caters to Southern & Westlands' }
+  ];
+
+  // Custom Icons
+  const facilityIcon = L.divIcon({
+    className: 'custom-facility-icon',
+    html: '<div style="background-color: #E0745E; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 18px;"></div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+
+  const driverIcon = L.divIcon({
+    className: 'custom-driver-icon',
+    html: '<div style="background-color: #10B981; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 15px;">🚛</div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
 
   function getKey() { return localStorage.getItem('gf_key') || ''; }
   function saveKey() {
@@ -366,7 +388,6 @@
       document.getElementById('keyGate').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
       document.getElementById('sidebar').style.display = 'flex';
-      // Initialize map after container is visible
       if (!map) {
         initMap();
       } else {
@@ -378,96 +399,98 @@
   }
 
   function initMap() {
-    // Center on Nairobi
     map = L.map('map-container').setView([-1.286389, 36.817223], 11);
     
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add Zone Markers
-    Object.keys(nairobiZones).forEach(zoneName => {
-      const zone = nairobiZones[zoneName];
-      const marker = L.circleMarker([zone.lat, zone.lng], {
-        radius: 8,
-        fillColor: zone.type === 'Market' ? '#F4B13B' : zone.type === 'Industrial' ? '#E0745E' : '#0F3D3A',
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8
-      }).addTo(map);
-
-      marker.bindPopup(`<b>${zoneName.charAt(0).toUpperCase() + zoneName.slice(1)}</b><br>Type: ${zone.type}<br><i>Click to see pickups</i>`);
-      
-      marker.on('click', () => {
-        showZonePickups(zoneName);
-      });
-
-      zoneMarkers.push({ name: zoneName, marker: marker, type: zone.type });
+    // Add Facility Markers
+    facilities.forEach(fac => {
+      const zone = nairobiZones[fac.locationKey];
+      if (zone) {
+        const marker = L.marker([zone.lat, zone.lng], { icon: facilityIcon }).addTo(map);
+        marker.bindPopup(`<b>🏭 ${fac.name}</b><br>${fac.desc}`);
+        mapLayers.facilities.push(marker);
+      }
     });
+
+    // Initial render of zones and drivers
+    updateMapZones(currentData);
+    updateMapDrivers();
   }
 
-  function updateMapMarkers(data) {
-    if (!map) return;
+  function updateMapZones(data) {
+    // Clear existing zone markers
+    mapLayers.zones.forEach(m => map.removeLayer(m));
+    mapLayers.zones = [];
 
-    // Clear existing driver markers
-    driverMarkers.forEach(m => map.removeLayer(m.marker));
-    driverMarkers = [];
+    // Get unique pickup locations from data
+    const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
+    
+    // If no data, show all known zones as fallback
+    const locationsToMap = uniqueLocations.length > 0 ? uniqueLocations : Object.keys(nairobiZones);
 
-    // Add Driver Markers based on service_area
-    workers.forEach(worker => {
-      if (worker.service_area) {
-        const areaLower = worker.service_area.toLowerCase();
-        // Find matching zone
-        const matchingZone = Object.keys(nairobiZones).find(z => areaLower.includes(z) || z.includes(areaLower));
+    locationsToMap.forEach(loc => {
+      const locLower = loc.toLowerCase();
+      // Find matching zone in our coordinate table
+      const zoneKey = Object.keys(nairobiZones).find(z => locLower.includes(z) || z.includes(locLower));
+      
+      if (zoneKey) {
+        const zone = nairobiZones[zoneKey];
+        const color = zone.type === 'Market' ? '#F4B13B' : zone.type === 'Industrial' ? '#E0745E' : '#0F3D3A';
         
-        if (matchingZone) {
-          const zone = nairobiZones[matchingZone];
-          // Add slight random offset so multiple drivers in same area don't overlap perfectly
-          const latOffset = (Math.random() - 0.5) * 0.002;
-          const lngOffset = (Math.random() - 0.5) * 0.002;
-          
-          const driverIcon = L.divIcon({
-            className: 'custom-driver-icon',
-            html: `<div style="background-color: #10B981; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: bold;"></div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-          });
+        const marker = L.circleMarker([zone.lat, zone.lng], {
+          radius: 10,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).addTo(map);
 
-          const marker = L.marker([zone.lat + latOffset, zone.lng + lngOffset], { icon: driverIcon }).addTo(map);
-          marker.bindPopup(`<b>Driver: ${worker.name}</b><br>Area: ${worker.service_area}<br>Vehicle: ${worker.vehicle_type || 'N/A'}<br>Status: ${worker.status}`);
-          driverMarkers.push({ name: worker.name, marker: marker });
+        // Find pickups for this location
+        const pickups = data.filter(r => r.pickup_location && r.pickup_location.toLowerCase().includes(zoneKey));
+        
+        let popupContent = `<b>${loc}</b><br><br>`;
+        if (pickups.length === 0) {
+          popupContent += `<i>No active pickups.</i>`;
+        } else {
+          popupContent += `<b>Active Pickups (${pickups.length}):</b><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          pickups.forEach(p => {
+            popupContent += `<li style="margin-bottom: 4px;"><b>${p.patron_name}</b> - ${p.estimated_volume_kg}kg ${p.waste_type}<br><small style="color: #666;">Status: ${p.status}</small></li>`;
+          });
+          popupContent += `</ul>`;
         }
+        
+        marker.bindPopup(popupContent);
+        mapLayers.zones.push(marker);
       }
     });
   }
 
-  function showZonePickups(zoneName) {
-    const zoneDisplayName = zoneName.charAt(0).toUpperCase() + zoneName.slice(1);
-    // Filter data for this zone (case-insensitive) and active statuses
-    const zonePickups = currentData.filter(r => 
-      r.pickup_location && r.pickup_location.toLowerCase().includes(zoneName) &&
-      (r.status === 'pending' || r.status === 'assigned')
-    );
+  function updateMapDrivers() {
+    // Clear existing driver markers
+    mapLayers.drivers.forEach(m => map.removeLayer(m));
+    mapLayers.drivers = [];
 
-    let popupContent = `<b>${zoneDisplayName}</b><br><br>`;
-    
-    if (zonePickups.length === 0) {
-      popupContent += `<i>No active pickups in this area.</i>`;
-    } else {
-      popupContent += `<b>Active Pickups (${zonePickups.length}):</b><br><ul style="margin-top: 8px; padding-left: 20px;">`;
-      zonePickups.forEach(p => {
-        popupContent += `<li><b>${p.patron_name}</b> - ${p.estimated_volume_kg}kg ${p.waste_type}<br><small>Status: ${p.status}</small></li>`;
-      });
-      popupContent += `</ul>`;
-    }
-
-    // Find the zone marker and open popup
-    const zoneMarker = zoneMarkers.find(z => z.name === zoneName);
-    if (zoneMarker) {
-      zoneMarker.marker.setPopupContent(popupContent).openPopup();
-    }
+    workers.forEach(worker => {
+      if (worker.service_area) {
+        const areaLower = worker.service_area.toLowerCase();
+        const zoneKey = Object.keys(nairobiZones).find(z => areaLower.includes(z) || z.includes(areaLower));
+        
+        if (zoneKey) {
+          const zone = nairobiZones[zoneKey];
+          // Add slight random offset so multiple drivers don't overlap perfectly
+          const latOffset = (Math.random() - 0.5) * 0.003;
+          const lngOffset = (Math.random() - 0.5) * 0.003;
+          
+          const marker = L.marker([zone.lat + latOffset, zone.lng + lngOffset], { icon: driverIcon }).addTo(map);
+          marker.bindPopup(`<b>🚛 Driver: ${worker.name}</b><br>Area: ${worker.service_area}<br>Vehicle: ${worker.vehicle_type || 'N/A'}<br>Plate: ${worker.vehicle_plate || 'N/A'}<br>Status: <b>${worker.status}</b>`);
+          mapLayers.drivers.push(marker);
+        }
+      }
+    });
   }
 
   function toggleSidebar() {
@@ -485,7 +508,6 @@
     return res.json();
   }
 
-  let currentData = [];
   async function load(silent) {
     try {
       workers = await apiFetch('/api/field-workers');
@@ -618,8 +640,11 @@
       container.appendChild(card);
     });
 
-    // Update map markers after rendering
-    updateMapMarkers(data);
+    // Update map after rendering
+    if (map) {
+      updateMapZones(currentData);
+      updateMapDrivers();
+    }
   }
 
   function getWorkerOptions(selectedId) {
