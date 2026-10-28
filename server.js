@@ -531,9 +531,11 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
   res.json(data);
 });
 
+// SMART DISPATCH: Auto-assign a worker based on service area matching
 app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
 
+  // 1. Get the pickup request details
   const { data: request, error: reqError } = await supabase
     .from('pickup_requests')
     .select('id, patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, status, vehicle_type')
@@ -543,30 +545,39 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
   if (request.status !== 'pending') return res.status(400).json({ error: 'Request is not pending' });
 
-  const { data: matchedWorker, error: matchError } = await supabase
+  // 2. Fetch ALL available workers
+  const { data: availableWorkers, error: workerError } = await supabase
     .from('field_workers')
     .select('*')
-    .eq('status', 'available')
-    .ilike('service_area', `%${request.pickup_location}%`)
-    .maybeSingle();
+    .eq('status', 'available');
 
-  let finalWorker = matchedWorker;
-  let assignmentType = 'Area Match';
-  
-  if (!finalWorker) {
-    const { data: fallbackWorker } = await supabase
-      .from('field_workers')
-      .select('*')
-      .eq('status', 'available')
-      .maybeSingle();
-    finalWorker = fallbackWorker;
-    assignmentType = 'Fallback (No area match)';
+  if (workerError) return res.status(500).json({ error: workerError.message });
+
+  let finalWorker = null;
+  let assignmentType = 'Fallback';
+
+  // 3. Smart Matching Logic (JavaScript)
+  if (availableWorkers && availableWorkers.length > 0) {
+    // Try to find a worker whose service_area is INSIDE the pickup location
+    // Example: Location "Nairobi West, Raila..." matches Area "Nairobi West"
+    finalWorker = availableWorkers.find(w => 
+      request.pickup_location.toLowerCase().includes(w.service_area.toLowerCase())
+    );
+
+    if (finalWorker) {
+      assignmentType = 'Area Match';
+    } else {
+      // If no specific area match, just pick the first available worker
+      finalWorker = availableWorkers[0];
+      assignmentType = 'Fallback (Nearest Available)';
+    }
   }
 
   if (!finalWorker) {
     return res.status(400).json({ error: 'No available workers found in the system' });
   }
 
+  // 4. Perform the assignment
   const { data: updatedRequest, error: updateError } = await supabase
     .from('pickup_requests')
     .update({
@@ -581,10 +592,13 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
 
   if (updateError) return res.status(500).json({ error: updateError.message });
 
+  // 5. Mark worker as busy
   await supabase.from('field_workers').update({ status: 'busy' }).eq('id', finalWorker.id);
 
+  // 6. Log the event
   await logPickupEvent(id, 'assigned', `Auto-assigned to ${finalWorker.name} via ${assignmentType}`);
 
+  // 7. Send WhatsApp notification to the driver (Peshy)
   if (finalWorker.phone) {
     await sendWhatsAppAssignment(
       normalizePhone(finalWorker.phone),
@@ -592,11 +606,12 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
       request.pickup_location,
       request.waste_type,
       request.estimated_volume_kg,
-      request.vehicle_type || 'Pickup Truck',
+      request.vehicle_type || 'Mini Truck',
       id
     );
   }
 
+  // 8. Send WhatsApp notification to the patron
   if (request.patron_phone) {
     const patronMessage = `Update: A collection team has been automatically assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
     await sendWhatsAppMessage(request.patron_phone, patronMessage);
