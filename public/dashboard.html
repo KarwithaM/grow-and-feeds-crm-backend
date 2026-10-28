@@ -16,12 +16,12 @@
     --text-muted: #6B7280;
     --border: #E5E7EB;
     --sidebar-bg: #0F3D3A;
-    /* New vibrant status colors from Casa Chromatica palette */
-    --status-pending: #0C6038; /* Meadow Green */
-    --status-assigned: #2D4C39; /* Outerspace */
-    --status-collected: #808847; /* Mustard Green */
-    --status-processed: #FTD2A1; /* Peach */
-    --status-cancelled: #6C27DA; /* Crimson */
+    /* New palette */
+    --status-pending: #1C2430; /* Midnight Blue */
+    --status-assigned: #6B6F4E; /* Olive */
+    --status-collected: #8A5A2B; /* Tobacco */
+    --status-processed: #6FA9BB; /* Moonstone Blue */
+    --status-cancelled: #4B1E23; /* Merlot */
   }
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +32,7 @@
     display: flex; height: 100vh; overflow: hidden; 
   }
 
-  /* Sidebar - fixed width, always fully visible */
+  /* Sidebar - fixed, never clipped */
   .sidebar {
     width: 80px; 
     min-width: 80px;
@@ -43,6 +43,7 @@
     flex-shrink: 0;
     position: relative;
     z-index: 100;
+    overflow: visible;
   }
   .sidebar.expanded { 
     width: 260px; 
@@ -67,16 +68,16 @@
   .sidebar.expanded .sidebar-header h2 { opacity: 1; }
   
   .nav-item {
-    display: flex; align-items: center; gap: 16px; padding: 12px 16px; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; padding: 12px; width: 100%;
     border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
     margin-bottom: 8px; color: rgba(255,255,255,0.7); transition: all 0.2s;
-    justify-content: center;
   }
-  .sidebar.expanded .nav-item { justify-content: flex-start; }
+  .sidebar.expanded .nav-item { justify-content: flex-start; padding: 12px 16px; }
   .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
   .nav-icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
-  .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
-  .sidebar.expanded .nav-text { opacity: 1; }
+  .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none; }
+  .sidebar.expanded .nav-text { opacity: 1; display: inline; }
   
   .sidebar-toggle {
     margin-top: auto; padding: 12px; width: 100%;
@@ -90,15 +91,15 @@
   .sidebar.expanded .sidebar-toggle svg { transform: rotate(180deg); }
   .sidebar-toggle-text { 
     margin-left: 12px; font-size: 13px; font-weight: 500; 
-    white-space: nowrap; opacity: 0; transition: opacity 0.2s;
+    white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none;
   }
-  .sidebar.expanded .sidebar-toggle-text { opacity: 1; }
+  .sidebar.expanded .sidebar-toggle-text { opacity: 1; display: inline; }
   
   .sidebar-footer { 
     padding: 12px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.5); 
-    text-align: center; opacity: 0; transition: opacity 0.2s; width: 100%;
+    text-align: center; opacity: 0; transition: opacity 0.2s; width: 100%; display: none;
   }
-  .sidebar.expanded .sidebar-footer { opacity: 1; }
+  .sidebar.expanded .sidebar-footer { opacity: 1; display: block; }
 
   /* Main Content */
   .main-content { 
@@ -146,7 +147,7 @@
   .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
   .section-title::before { content: ''; width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; }
 
-  /* Floating Cards with New Vibrant Left Colored Strip */
+  /* Floating Cards with New Left Colored Strip */
   .shipments-list { display: flex; flex-direction: column; gap: 20px; }
   
   .shipment-card {
@@ -158,15 +159,15 @@
   }
   .shipment-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 61, 58, 0.12); }
   
-  /* Vibrant left colored strip per status - Casa Chromatica palette */
+  /* New palette left colored strip */
   .shipment-card::before {
     content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
   }
-  .shipment-card.status-pending::before { background: var(--status-pending); } /* Meadow Green */
-  .shipment-card.status-assigned::before { background: var(--status-assigned); } /* Outerspace */
-  .shipment-card.status-collected::before { background: var(--status-collected); } /* Mustard Green */
-  .shipment-card.status-processed::before { background: var(--status-processed); } /* Peach */
-  .shipment-card.status-cancelled::before { background: var(--status-cancelled); } /* Crimson */
+  .shipment-card.status-pending::before { background: var(--status-pending); }
+  .shipment-card.status-assigned::before { background: var(--status-assigned); }
+  .shipment-card.status-collected::before { background: var(--status-collected); }
+  .shipment-card.status-processed::before { background: var(--status-processed); }
+  .shipment-card.status-cancelled::before { background: var(--status-cancelled); }
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
   .card-title-group { display: flex; align-items: center; gap: 16px; }
@@ -192,7 +193,6 @@
   .detail-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
   .detail-item span { font-size: 15px; font-weight: 600; color: var(--text-main); text-transform: capitalize; }
 
-  /* Timeline */
   .timeline-container { padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
   .timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 10px; }
   .timeline-track::before { content: ''; position: absolute; top: 7px; left: 0; right: 0; height: 3px; background: var(--border); z-index: 0; border-radius: 2px; }
@@ -204,7 +204,6 @@
   .timeline-dot.active { background: var(--primary); box-shadow: 0 0 0 3px #D1FAE5; border-color: var(--primary); }
   .timeline-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
 
-  /* Card Actions Footer */
   .card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
   .checkbox-group { display: flex; gap: 16px; }
   .custom-checkbox {
@@ -217,7 +216,6 @@
   .worker-select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 200px; outline: none; font-weight: 500; }
   .btn-sm { padding: 8px 14px; font-size: 12px; }
 
-  /* Login Gate */
   #keyGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
   .gate-box { background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
   .gate-box img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; object-fit: cover; }
@@ -233,7 +231,6 @@
 </head>
 <body>
 
-<!-- Login Gate -->
 <div id="keyGate">
   <div class="gate-box">
     <img src="logo.png" alt="Logo">
@@ -245,7 +242,6 @@
   </div>
 </div>
 
-<!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <img src="logo.png" alt="Logo">
@@ -279,7 +275,6 @@
   <div class="sidebar-footer">v1.0.0 • Command Center<br>Grow More Feed Better</div>
 </aside>
 
-<!-- Main Content -->
 <main class="main-content" id="app" style="display:none;">
   <header class="top-bar">
     <h1>Operations Dashboard</h1>
@@ -317,7 +312,6 @@
   </div>
 </main>
 
-<!-- Add Delivery Worker Dialog -->
 <dialog id="addWorkerDialog">
   <h3>Add Delivery Worker</h3>
   <label>Full Name</label>
@@ -342,7 +336,6 @@
   </div>
 </dialog>
 
-<!-- AI Report Dialog -->
 <dialog id="reportDialog">
   <h3>Weekly AI Impact Report</h3>
   <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--bg); padding: 20px; border-radius: 10px; min-height: 140px; border: 1px solid var(--border);">Analyzing...</div>
@@ -360,12 +353,12 @@
   let workers = [];
   
   const wasteEmojis = { 
-    'processing': '🏭', 
-    'market': '🍌', 
-    'restaurant': '️🥘', 
-    'household': '🏘️', 
-    'agriculture': '🌾', 
-    'institutional': '🏫'
+    'processing': '', 
+    'market': '', 
+    'restaurant': '️', 
+    'household': '', 
+    'agriculture': '', 
+    'institutional': ''
   };
 
   const statusToStep = {
