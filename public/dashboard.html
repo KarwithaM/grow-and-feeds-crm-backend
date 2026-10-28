@@ -298,6 +298,9 @@
     'kirinyaga': { lat: -1.2833, lng: 36.8219 },
     'kiambaa': { lat: -1.1833, lng: 36.8333 },
     'marimanti': { lat: -0.5167, lng: 37.4500 }
+    'kabiria': { lat: -1.2800, lng: 36.7200 },
+    'nairobi west': { lat: -1.3067, lng: 36.7833 }, // ADDED: Correct coordinates for Nairobi West
+    'kirinyaga': { lat: -1.2833, lng: 36.8219 },
   };
 
   const facilities = [
@@ -389,13 +392,22 @@
     updateMapDrivers();
   }
 
-  function getWasteColor(wasteType) {
+    function getWasteColor(wasteType) {
     if (!wasteType) return '#6B7280';
     const wt = wasteType.toLowerCase();
-    if (wt.includes('agriculture') || wt.includes('manure')) return '#8A5A2B';
-    if (wt.includes('processing') || wt.includes('market') || wt.includes('fruit')) return '#F4B13B';
+    
+    // Brown (Agriculture/Manure/Old Crop Residue)
+    if (wt.includes('agriculture') || wt.includes('manure') || wt.includes('crop_residue')) return '#8A5A2B';
+    
+    // Yellow (Market/Processing/Old Fruit Veg)
+    if (wt.includes('processing') || wt.includes('market') || wt.includes('fruit') || wt.includes('fruit_veg')) return '#F4B13B';
+    
+    // Dark Green (Restaurant/Household)
     if (wt.includes('restaurant') || wt.includes('household') || wt.includes('cooked')) return '#0F3D3A';
+    
+    // Blue (Institutional)
     if (wt.includes('institutional')) return '#6FA9BB';
+    
     return '#6B7280';
   }
 
@@ -444,19 +456,20 @@
         }
       }
       
-      // Strategy 4: Word-by-word matching (but avoid false positives)
+            // Strategy 4: Word-by-word matching (STRICT: All location words must match zone words)
       if (!zoneKey) {
         const locWords = locLower.split(/[\s,_-]+/).filter(w => w.length > 3);
-        for (const word of locWords) {
-          const found = Object.keys(nairobiZones).find(z => {
+        
+        // Only try matching if we have significant words
+        if (locWords.length > 0) {
+          zoneKey = Object.keys(nairobiZones).find(z => {
             const zWords = z.split(/[\s,_-]+/);
-            // Require exact word match, not just substring
-            return zWords.some(zw => zw === word || zw.startsWith(word));
+            // Check if EVERY word in the location has a matching word in the zone
+            return locWords.every(lw => zWords.some(zw => zw.startsWith(lw)));
           });
-          if (found) {
-            zoneKey = found;
-            console.log(`Found word match: "${loc}" -> "${zoneKey}" via word "${word}"`);
-            break;
+          
+          if (zoneKey) {
+            console.log(`Found strict word match: "${loc}" -> "${zoneKey}"`);
           }
         }
       }
