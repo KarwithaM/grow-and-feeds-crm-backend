@@ -38,22 +38,19 @@ function isDuplicateMessage(id) {
   return false;
 }
 
-// Helper to capitalize names
 function capitalizeName(name) {
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
 
-// Helper to determine vehicle based on volume
 function getVehicleType(kg) {
   if (kg <= 500) return 'Pickup Truck';
   if (kg <= 2000) return 'Mini Truck';
   return 'Trailer';
 }
 
-// Helper to calculate estimated M-Pesa cost (Mock logic)
 function calculateMPesaCost(kg, distanceKm = 15) {
-  const baseRate = 50; // KES per km
-  return Math.ceil((kg * 0.5) + (distanceKm * baseRate)); 
+  const baseRate = 50;
+  return Math.ceil((kg * 0.5) + (distanceKm * baseRate));
 }
 
 async function getSession(phone) {
@@ -195,7 +192,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
           if (!from || (!text && !actionRequestId)) continue;
 
-          // --- DRIVER ACTIONS ---
           if (actionRequestId) {
             const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
@@ -218,11 +214,8 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               if (request.status === 'assigned') {
                 newStatus = 'collected';
                 eventNotes = 'Driver marked as Picked Up via WhatsApp';
-                // Notify Patron
                 await sendWhatsAppMessage(request.patron_phone, `Thank you ${request.patron_name}! Your ${request.estimated_volume_kg}kg of waste has been successfully picked up. You are contributing to a cleaner Nairobi and supporting organic farming. We will notify you once it reaches our facility.`);
-                // Prompt Driver for Waste ID
                 await sendWhatsAppMessage(from, "Great job! Please enter the Waste ID Number issued at the facility drop-off gate:");
-                // Set a temporary state for the driver to input the ID
                 await supabase.from('sessions').upsert({ phone: from, state: 'driver_waste_id', request_id: actionRequestId }, { onConflict: 'phone' });
                 return res.status(200).send('EVENT_RECEIVED');
               }
@@ -251,27 +244,20 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             return res.status(200).send('EVENT_RECEIVED');
           }
 
-          // --- PATRON & DRIVER CONVERSATIONAL FLOW ---
           let session = await getSession(from);
 
-          // Special case: Driver entering Waste ID
           if (session.state === 'driver_waste_id') {
             const wasteId = text.trim();
             await supabase.from('pickup_requests').update({ waste_id: wasteId, delivered_to_facility: true, processed_at: new Date().toISOString() }).eq('id', session.request_id);
             await deleteSession(from);
             
-            // Notify Patron about Drop-off and 3-week/7-week timeline
             const patronMsg = `Great news! Your waste has been safely received at our facility and the Black Soldier Fly transformation has begun. \n\nIn 3 weeks, we'll tell you when the larvae are harvested. In 7 weeks, we'll let you know when your waste becomes rich organic fertilizer. Thank you for growing more and feeding better!`;
-            await sendWhatsAppMessage(session.phone === from ? session.phone : from, patronMsg); // Note: In real app, use request.patron_phone
-            // For demo simplicity, we assume session.phone might be patron or driver. In production, fetch request.patron_phone.
             const { data: reqData } = await supabase.from('pickup_requests').select('patron_phone').eq('id', session.request_id).single();
             if(reqData) await sendWhatsAppMessage(reqData.patron_phone, patronMsg);
-
             await sendWhatsAppMessage(from, `Waste ID ${wasteId} recorded successfully. Payment for your service has been initiated.`);
             return res.status(200).send('EVENT_RECEIVED');
           }
 
-          // 1. Greeting
           if (text.toLowerCase() === 'hi' || text.toLowerCase() === 'hello' || text.toLowerCase() === 'hey') {
             session = { state: 'name' };
             await setSession(from, session);
@@ -279,7 +265,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // 2. Name Capture (with capitalization)
           if (session.state === 'name') {
             const capitalizedName = capitalizeName(text);
             session.patron_name = capitalizedName;
@@ -289,7 +274,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // 3. Waste Type Mapping
           if (session.state === 'waste_type') {
             const wasteMap = {
               '1': 'processing', 'processing': 'processing', '1.': 'processing',
@@ -313,7 +297,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // 4. Volume & Vehicle Logic
           if (session.state === 'volume') {
             const volume = parseInt(text);
             if (isNaN(volume) || volume <= 0) {
@@ -328,7 +311,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // 5. Location
           if (session.state === 'location') {
             session.pickup_location = text;
             session.state = 'confirmation';
@@ -339,7 +321,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // 6. Confirmation & M-Pesa Simulation
           if (session.state === 'confirmation') {
             if (text.toLowerCase() === 'no' || text.toLowerCase() === 'cancel') {
               await deleteSession(from);
@@ -347,10 +328,8 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               continue;
             }
             if (text.toLowerCase() === 'yes' || text.toLowerCase() === 'y') {
-              // Simulate M-Pesa STK Push
               await sendWhatsAppMessage(from, "Request Confirmed! Kindly enter your M-Pesa PIN on the prompt that has just appeared on your screen to pay for organic waste disposal services.");
               
-              // Simulate Payment Success after 2 seconds (In production, this is a webhook from Daraja)
               setTimeout(async () => {
                 const { error } = await supabase.from('pickup_requests').insert({
                   patron_name: session.patron_name,
@@ -365,7 +344,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                 
                 if (!error) {
                   await sendWhatsAppMessage(from, "Payment received successfully! A collection team will be assigned shortly. You will receive the vehicle and driver details soon.");
-                  // Trigger Auto-Assign logic here if desired, or let operator do it manually
                 }
               }, 2000);
 
@@ -376,7 +354,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             continue;
           }
 
-          // AI Fallback
           const aiReply = await getAIResponse(text);
           if (aiReply) await sendWhatsAppMessage(from, aiReply);
           else await sendWhatsAppMessage(from, "I did not understand that. Please send 'Hi' to start a new pickup request.");
@@ -390,9 +367,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
     return res.status(200).send('EVENT_RECEIVED');
   }
 });
-
-// ... [Keep all existing Dashboard API endpoints, AI Report, Auto-Assign, etc. exactly as they were in the previous version] ...
-// Note: Ensure your Supabase tables have columns: vehicle_type (text), waste_id (text), payment_received (boolean), delivered_to_facility (boolean)
 
 function timestampForStatus(status) {
   if (status === 'assigned') return { assigned_at: new Date().toISOString() };
@@ -418,5 +392,300 @@ async function getAIResponse(userMessage) {
   } catch (error) { return null; }
 }
 
+// ===== DASHBOARD API ENDPOINTS =====
+
+app.get('/api/pickup-requests', requireDashboardKey, async (req, res) => {
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .select('*, field_workers(id, name, phone, status)')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.get('/api/field-workers', requireDashboardKey, async (req, res) => {
+  const { data, error } = await supabase.from('field_workers').select('*').order('name', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/field-workers', requireDashboardKey, async (req, res) => {
+  const name = (req.body?.name || '').trim();
+  const phone = (req.body?.phone || '').trim();
+  const service_area = (req.body?.service_area || '').trim();
+
+  if (!name) return res.status(400).json({ error: 'name is required' });
+
+  const { data, error } = await supabase
+    .from('field_workers')
+    .insert({ name, phone: phone || null, service_area: service_area || null, status: 'available' })
+    .select()
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const workerId = req.body?.worker_id;
+
+  if (!workerId) return res.status(400).json({ error: 'worker_id is required' });
+
+  const { data: worker, error: workerError } = await supabase
+    .from('field_workers')
+    .select('id, name, phone, status')
+    .eq('id', workerId)
+    .maybeSingle();
+
+  if (workerError) return res.status(500).json({ error: workerError.message });
+  if (!worker) return res.status(404).json({ error: 'field worker not found' });
+  if (worker.status !== 'available') return res.status(400).json({ error: 'Field worker is not available' });
+
+  const { data: request, error: reqError } = await supabase
+    .from('pickup_requests')
+    .select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, worker_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
+
+  if (request.worker_id && request.worker_id !== workerId) {
+    await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
+    await logPickupEvent(id, 'reassigned', `Reassigned from previous worker to ${worker.name}`);
+  } else {
+    await logPickupEvent(id, 'assigned', `Assigned to ${worker.name}`);
+  }
+
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .update({
+      worker_id: workerId,
+      status: 'assigned',
+      updated_at: new Date().toISOString(),
+      ...timestampForStatus('assigned')
+    })
+    .eq('id', id)
+    .select('*, field_workers(id, name, phone, status)')
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
+
+  if (worker.phone) {
+    await sendWhatsAppAssignment(
+      normalizePhone(worker.phone),
+      request.patron_name,
+      request.pickup_location,
+      request.waste_type,
+      request.estimated_volume_kg,
+      request.vehicle_type || 'Pickup Truck',
+      id
+    );
+  }
+
+  if (request.patron_phone) {
+    const patronMessage = `Update: A collection team has been assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
+    await sendWhatsAppMessage(request.patron_phone, patronMessage);
+  }
+
+  res.json(data);
+});
+
+app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body || {};
+  const allowed = ['pending', 'assigned', 'collected', 'processed', 'cancelled'];
+
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+  }
+
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+      ...timestampForStatus(status)
+    })
+    .eq('id', id)
+    .select('*, field_workers(id, name, phone, status)')
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  await logPickupEvent(id, status, notes);
+
+  if (data?.patron_phone) {
+    if (status === 'collected') {
+      const receivedMessage = `Thank you. Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been safely received at the Grow and Feeds facility. It is now entering the Black Soldier Fly processing cycle. We will notify you once the transformation is complete.`;
+      await sendWhatsAppMessage(data.patron_phone, receivedMessage);
+    }
+    
+    if (status === 'processed') {
+      const processedMessage = `Great news! Your ${data.estimated_volume_kg}kg of ${data.waste_type} has been successfully transformed into Black Soldier Fly organic fertilizer and animal feed. Thank you for contributing to a greener environment and supporting sustainable agriculture with Grow and Feeds Patrons.`;
+      await sendWhatsAppMessage(data.patron_phone, processedMessage);
+    }
+  }
+
+  res.json(data);
+});
+
+app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: request, error: reqError } = await supabase
+    .from('pickup_requests')
+    .select('id, patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, status, vehicle_type')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (reqError || !request) return res.status(404).json({ error: 'Pickup request not found' });
+  if (request.status !== 'pending') return res.status(400).json({ error: 'Request is not pending' });
+
+  const { data: matchedWorker, error: matchError } = await supabase
+    .from('field_workers')
+    .select('*')
+    .eq('status', 'available')
+    .ilike('service_area', `%${request.pickup_location}%`)
+    .maybeSingle();
+
+  let finalWorker = matchedWorker;
+  let assignmentType = 'Area Match';
+  
+  if (!finalWorker) {
+    const { data: fallbackWorker } = await supabase
+      .from('field_workers')
+      .select('*')
+      .eq('status', 'available')
+      .maybeSingle();
+    finalWorker = fallbackWorker;
+    assignmentType = 'Fallback (No area match)';
+  }
+
+  if (!finalWorker) {
+    return res.status(400).json({ error: 'No available workers found in the system' });
+  }
+
+  const { data: updatedRequest, error: updateError } = await supabase
+    .from('pickup_requests')
+    .update({
+      worker_id: finalWorker.id,
+      status: 'assigned',
+      updated_at: new Date().toISOString(),
+      assigned_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select('*, field_workers(id, name, phone, status)')
+    .maybeSingle();
+
+  if (updateError) return res.status(500).json({ error: updateError.message });
+
+  await supabase.from('field_workers').update({ status: 'busy' }).eq('id', finalWorker.id);
+
+  await logPickupEvent(id, 'assigned', `Auto-assigned to ${finalWorker.name} via ${assignmentType}`);
+
+  if (finalWorker.phone) {
+    await sendWhatsAppAssignment(
+      normalizePhone(finalWorker.phone),
+      request.patron_name,
+      request.pickup_location,
+      request.waste_type,
+      request.estimated_volume_kg,
+      request.vehicle_type || 'Pickup Truck',
+      id
+    );
+  }
+
+  if (request.patron_phone) {
+    const patronMessage = `Update: A collection team has been automatically assigned to your request. They will contact you shortly to confirm the pickup time for your ${request.estimated_volume_kg}kg of ${request.waste_type}. Thank you for your patience.`;
+    await sendWhatsAppMessage(request.patron_phone, patronMessage);
+  }
+
+  res.json({ success: true, worker: finalWorker.name, assignmentType });
+});
+
+app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+
+    const { data, error } = await supabase
+      .from('pickup_requests')
+      .select('estimated_volume_kg, waste_type, pickup_location, status')
+      .in('status', ['collected', 'processed'])
+      .gte('created_at', isoSevenDaysAgo);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    if (!data || data.length === 0) {
+      return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
+    }
+
+    const totalKg = data.reduce((sum, row) => sum + (row.estimated_volume_kg || 0), 0);
+    const wasteTypes = {};
+    const locations = {};
+    
+    data.forEach(row => {
+      wasteTypes[row.waste_type] = (wasteTypes[row.waste_type] || 0) + (row.estimated_volume_kg || 0);
+      locations[row.pickup_location] = (locations[row.pickup_location] || 0) + 1;
+    });
+
+    const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
+    const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
+
+    const promptData = `
+      Total completed pickups: ${data.length}
+      Total weight diverted: ${totalKg} kg
+      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+      Most active location: ${topLocation} (${locations[topLocation]} pickups)
+    `;
+
+    const qwenResponse = await qwenClient.chat.completions.create({
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
+        },
+        {
+          role: 'user',
+          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+
+    res.json({ report: qwenResponse.choices[0].message.content });
+  } catch (error) {
+    console.error('AI Report Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate AI report' });
+  }
+});
+
+app.patch('/api/pickup-requests/:id/update', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const { payment_received, delivered_to_facility, delivery_facility } = req.body || {};
+
+  const updateData = { updated_at: new Date().toISOString() };
+  if (payment_received !== undefined) updateData.payment_received = payment_received;
+  if (delivered_to_facility !== undefined) updateData.delivered_to_facility = delivered_to_facility;
+  if (delivery_facility !== undefined) updateData.delivery_facility = delivery_facility;
+
+  const { data, error } = await supabase
+    .from('pickup_requests')
+    .update(updateData)
+    .eq('id', id)
+    .select('*, field_workers(id, name, phone, status)')
+    .maybeSingle();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => { console.log(`Grow and Feeds Backend listening on port ${PORT}`); });
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Grow and Feeds Backend listening on port ${PORT}`);
+});
