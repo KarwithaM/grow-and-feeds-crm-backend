@@ -247,7 +247,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                // Logic for secondary worker would go here. For MVP, we assume primary driver handles the flow.
             }
 
-            if (btnAction === 'accept') {
+                        if (btnAction === 'accept') {
               await supabase.from('pickup_requests').update({
                 status: 'assigned', updated_at: new Date().toISOString(), assigned_at: new Date().toISOString()
               }).eq('id', actionRequestId);
@@ -257,7 +257,24 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
               await logPickupEvent(actionRequestId, 'assigned', `Driver confirmed pickup.`);
 
-              const customerMsg = `Great news! Your collection team is confirmed.\n\n Driver: ${request.field_workers.name}\n🚚 Vehicle: ${request.field_workers.vehicle_type} (${request.field_workers.vehicle_plate})\n Location: ${request.pickup_location}\n\nThey will contact you shortly.\n\nThank you for growing more and feeding better! 🌱\n\n💡 Fun Fact: Black Soldier Fly larvae are completely harmless and don't bite or sting!`;
+              // --- FIX: Build dynamic team details ---
+              let teamDetails = ` Driver 1: ${request.field_workers.name}\n🚚 Vehicle: ${request.field_workers.vehicle_type} (${request.field_workers.vehicle_plate})\n`;
+
+              if (request.secondary_worker_id) {
+                  // Fetch secondary driver details from database
+                  const { data: secondaryWorker } = await supabase
+                      .from('field_workers')
+                      .select('name, vehicle_type, vehicle_plate')
+                      .eq('id', request.secondary_worker_id)
+                      .single();
+
+                  if (secondaryWorker) {
+                      teamDetails += `\n🚛 Driver 2: ${secondaryWorker.name}\n🚚 Vehicle: ${secondaryWorker.vehicle_type} (${secondaryWorker.vehicle_plate})\n`;
+                  }
+              }
+
+              const customerMsg = `Great news! Your collection team is confirmed and on their way.\n\n${teamDetails}\n📍 Location: ${request.pickup_location}\n\nThey will contact you shortly to coordinate the pickup.\n\nThank you for growing more and feeding better! 🌱\n\n💡 Fun Fact: Black Soldier Fly larvae are completely harmless and don't bite or sting!`;
+              
               await sendWhatsAppMessage(request.patron_phone, customerMsg);
 
               await sendWhatsAppButtons(from, `Job Confirmed! Please proceed to the pickup location. Once you have the waste, tap below:`, [
