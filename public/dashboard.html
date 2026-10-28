@@ -3,203 +3,294 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Grow and Feeds - Command Center</title>
+<title>Grow and Feeds Patrons - Command Center</title>
 <style>
   :root {
-    --primary: #084723;
-    --secondary: #3c2415;
-    --accent: #e9d8c0;
-    --bg: #f9f7f2;
-    --text: #1c2b1e;
+    --primary: #084723; /* Deep Green */
+    --secondary: #3c2415; /* Dark Brown */
+    --accent: #e9d8c0; /* Cream */
+    --bg: #f8f9fa; /* Light Gray Background */
     --card-bg: #ffffff;
-    --border: #e5e7eb;
+    --text-main: #1a1a1a;
+    --text-muted: #6c757d;
+    --border: #e9ecef;
+    --success: #28a745;
+    --warning: #fd7e14;
+    --info: #0d6efd;
+    --danger: #dc3545;
   }
-  * { box-sizing: border-box; }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text-main);
+    display: flex; height: 100vh; overflow: hidden;
   }
-  header {
-    background: var(--primary); color: #fff; padding: 16px 24px;
-    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px; background: var(--primary); color: #fff;
+    display: flex; flex-direction: column; padding: 24px 16px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
   }
-  header h1 { font-size: 20px; margin: 0; font-weight: 600; }
-  header .status { font-size: 13px; opacity: 0.9; }
-  main { max-width: 1400px; margin: 20px auto; padding: 0 16px; }
+  .sidebar h2 { font-size: 18px; margin-bottom: 32px; padding-left: 12px; font-weight: 700; letter-spacing: 0.5px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+    margin-bottom: 8px; transition: background 0.2s; color: rgba(255,255,255,0.8);
+  }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; }
+  .nav-item span { font-size: 18px; }
+  .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 12px; color: rgba(255,255,255,0.6); text-align: center; }
+
+  /* Main Content */
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   
-  .toolbar { 
-    display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; 
-    background: var(--card-bg); padding: 12px 16px; border-radius: 8px; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  /* Top Bar */
+  .top-bar {
+    background: var(--card-bg); padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
   }
-  .tab {
-    padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border);
-    background: #fff; cursor: pointer; font-size: 13px; color: var(--text);
+  .top-bar h1 { font-size: 20px; font-weight: 600; color: var(--secondary); }
+  .top-bar-actions { display: flex; gap: 12px; align-items: center; }
+  .search-box {
+    padding: 8px 16px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: 13px; width: 240px; outline: none;
   }
-  .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-  button.refresh, button.secondary, button.view-toggle {
-    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
-    background: #fff; cursor: pointer; font-size: 13px; color: var(--text);
+  .search-box:focus { border-color: var(--primary); }
+  .btn {
+    padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
   }
-  button.view-toggle.active { background: var(--secondary); color: #fff; border-color: var(--secondary); }
-  button.refresh { margin-left: auto; }
-  select {
-    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; font-size: 13px;
-  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #06361a; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-accent { background: var(--accent); color: var(--secondary); border: 1px solid var(--secondary); }
 
-  /* Table Styles */
-  table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  th, td { text-align: left; padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { background: var(--accent); font-weight: 600; color: var(--secondary); }
-  tr:last-child td { border-bottom: none; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-  .badge.pending { background: #fdecd2; color: #92600a; }
-  .badge.assigned { background: #dbeafe; color: #1e4d8c; }
-  .badge.collected { background: #e0e7ff; color: #3730a3; }
-  .badge.processed { background: #dcfce7; color: #15803d; }
-  .badge.cancelled { background: #fee2e2; color: #991b1b; }
+  /* Dashboard Content */
+  .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
+  
+  /* Stats Row */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--card-bg); padding: 20px; border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border);
+  }
+  .stat-card h3 { font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: var(--secondary); }
+  .stat-card .trend { font-size: 12px; color: var(--success); margin-top: 4px; }
 
-  /* Card Styles */
-  .cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-  .status-group { margin-bottom: 24px; }
-  .status-group h3 { 
-    font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--secondary); 
-    margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent);
+  /* Filters Row */
+  .filters-row { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+  .filter-select {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; background: #fff; outline: none; cursor: pointer;
   }
-  .card {
-    background: var(--card-bg); border-radius: 10px; padding: 16px; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 12px;
+  .filter-select:focus { border-color: var(--primary); }
+
+  /* Shipments List */
+  .shipments-list { display: flex; flex-direction: column; gap: 16px; }
+  .section-title { font-size: 16px; font-weight: 600; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .section-title::before { content: ''; width: 4px; height: 16px; background: var(--primary); border-radius: 2px; }
+
+  .shipment-card {
+    background: var(--card-bg); border-radius: 12px; padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 16px; transition: transform 0.2s, box-shadow 0.2s;
   }
+  .shipment-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .card-header h4 { margin: 0; font-size: 16px; color: var(--primary); }
-  .card-details { font-size: 13px; color: #555; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .card-details span { display: flex; flex-direction: column; }
-  .card-details strong { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 2px; }
-  
-  /* Workflow Progress */
-  .workflow-steps { display: flex; justify-content: space-between; margin: 12px 0; position: relative; }
-  .workflow-steps::before {
+  .card-title-group { display: flex; align-items: center; gap: 12px; }
+  .waste-icon { 
+    width: 40px; height: 40px; border-radius: 8px; background: var(--accent); 
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .card-title h4 { font-size: 16px; font-weight: 600; color: var(--secondary); margin-bottom: 2px; }
+  .card-title p { font-size: 12px; color: var(--text-muted); }
+  .status-badge {
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .status-badge.pending { background: #fff3e0; color: #e65100; }
+  .status-badge.assigned { background: #e3f2fd; color: #0d47a1; }
+  .status-badge.collected { background: #e8eaf6; color: #283593; }
+  .status-badge.processed { background: #e8f5e9; color: #1b5e20; }
+  .status-badge.cancelled { background: #ffebee; color: #b71c1c; }
+
+  .card-details-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .detail-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+  .detail-item span { font-size: 14px; font-weight: 500; color: var(--text-main); }
+
+  /* Timeline */
+  .timeline-container { padding: 8px 0; }
+  .timeline-track { display: flex; justify-content: space-between; position: relative; margin-bottom: 8px; }
+  .timeline-track::before {
     content: ''; position: absolute; top: 6px; left: 0; right: 0; height: 2px; background: var(--border); z-index: 0;
   }
-  .step { 
-    width: 14px; height: 14px; border-radius: 50%; background: var(--border); 
-    border: 2px solid #fff; z-index: 1; position: relative;
+  .timeline-progress {
+    position: absolute; top: 6px; left: 0; height: 2px; background: var(--primary); z-index: 1; transition: width 0.3s;
   }
-  .step.active { background: var(--primary); }
-  .step-labels { display: flex; justify-content: space-between; font-size: 9px; color: #888; margin-top: 4px; }
-  
-  /* Checkboxes & Actions */
-  .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .checkbox-label { 
-    display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; 
-    padding: 4px 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--border);
+  .timeline-dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--border); border: 2px solid #fff;
+    z-index: 2; position: relative; box-shadow: 0 0 0 1px var(--border);
   }
-  .checkbox-label input { margin: 0; }
-  .assign-row { display: flex; gap: 6px; margin-top: 8px; }
-  select.worker-select, select.status-select {
-    padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; flex: 1;
-  }
-  .assign-row button {
-    padding: 5px 9px; border-radius: 5px; border: 1px solid var(--primary);
-    background: var(--primary); color: #fff; font-size: 12px; cursor: pointer;
-  }
-  .auto-assign-btn { background: #0284c7 !important; border-color: #0284c7 !important; }
+  .timeline-dot.active { background: var(--primary); box-shadow: 0 0 0 2px var(--accent); }
+  .timeline-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
 
-  /* Dialogs & Gates */
-  .empty { text-align: center; padding: 40px; color: #6b7a6c; font-size: 14px; }
-  #keyGate {
-    max-width: 360px; margin: 80px auto; background: #fff; padding: 24px; border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.06); text-align: center;
+  /* Card Actions Footer */
+  .card-footer {
+    display: flex; justify-content: space-between; align-items: center; padding-top: 16px;
+    border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;
   }
-  #keyGate input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid var(--border); border-radius: 6px; }
-  #keyGate button { padding: 8px 16px; border-radius: 6px; border: none; background: var(--primary); color: #fff; cursor: pointer; }
-  .error { color: #b91c1c; font-size: 13px; margin-top: 8px; }
-  dialog { border: none; border-radius: 10px; padding: 20px; max-width: 320px; width: 90%; }
-  dialog input { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid var(--border); border-radius: 6px; }
-  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+  .checkbox-group { display: flex; gap: 16px; }
+  .custom-checkbox {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;
+    padding: 6px 12px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);
+  }
+  .custom-checkbox input { margin: 0; cursor: pointer; }
+  .action-group { display: flex; gap: 8px; align-items: center; }
+  .worker-select {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; min-width: 180px;
+  }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-auto { background: var(--info); color: #fff; }
+
+  /* Dialogs */
+  #keyGate {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .gate-box {
+    background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 100%; max-width: 360px; text-align: center;
+  }
+  .gate-box input { width: 100%; padding: 10px; margin: 16px 0; border: 1px solid var(--border); border-radius: 6px; }
+  dialog { border: none; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  dialog input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid var(--border); border-radius: 6px; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+  @media (max-width: 1024px) {
+    .sidebar { display: none; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-details-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
 
+<!-- Login Gate -->
 <div id="keyGate">
-  <h2>Operator sign-in</h2>
-  <p style="font-size:13px;color:#6b7a6c;">Enter the dashboard access key.</p>
-  <input id="keyInput" type="password" placeholder="Access key" />
-  <br />
-  <button onclick="saveKey()">Continue</button>
-  <div id="keyError" class="error"></div>
+  <div class="gate-box">
+    <h2 style="color: var(--primary); margin-bottom: 8px;">Grow and Feeds</h2>
+    <p style="font-size:13px;color:var(--text-muted); margin-bottom: 24px;">Operator Command Center</p>
+    <input id="keyInput" type="password" placeholder="Enter Access Key" />
+    <button class="btn btn-primary" style="width:100%; padding: 12px;" onclick="saveKey()">Access Dashboard</button>
+    <div id="keyError" style="color: var(--danger); font-size: 13px; margin-top: 12px;"></div>
+  </div>
 </div>
 
-<div id="app" style="display:none;">
-  <header>
-    <h1>Grow and Feeds - Command Center</h1>
-    <span class="status" id="lastUpdated">Loading...</span>
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar" style="display:none;">
+  <h2>🌱 Grow & Feeds</h2>
+  <div class="nav-item active"><span></span> Dashboard</div>
+  <div class="nav-item"><span>🗺️</span> Live Map</div>
+  <div class="nav-item"><span>👷</span> Field Workers</div>
+  <div class="nav-item"><span>📦</span> Inventory</div>
+  <div class="nav-item"><span>📈</span> Reports</div>
+  <div class="sidebar-footer">v1.0.0 • Command Center</div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content" id="app" style="display:none;">
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <h1>Operations Dashboard</h1>
+    <div class="top-bar-actions">
+      <input type="text" class="search-box" placeholder="Search patrons, locations..." id="searchBox" onkeyup="handleSearch()" />
+      <button class="btn btn-outline" onclick="load()"> Refresh</button>
+      <button class="btn btn-accent" onclick="generateAIReport()">✨ AI Report</button>
+      <button class="btn btn-primary" onclick="openAddWorker()">+ Add Worker</button>
+    </div>
   </header>
-  <main>
-    <div class="toolbar">
-      <button class="tab active" data-filter="pending">Pending</button>
-      <button class="tab" data-filter="assigned">Assigned</button>
-      <button class="tab" data-filter="collected">Collected</button>
-      <button class="tab" data-filter="processed">Processed</button>
-      <button class="tab" data-filter="all">All</button>
-      
-      <select id="locationFilter" onchange="updateFilters()"><option value="all">All Locations</option></select>
-      <select id="wasteFilter" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
-      
-      <button class="view-toggle active" id="btnCardView" onclick="setView('card')">Cards</button>
-      <button class="view-toggle" id="btnTableView" onclick="setView('table')">Table</button>
-      
-      <button class="secondary" onclick="openAddWorker()">+ Add Worker</button>
-      <button class="refresh" onclick="load()">Refresh</button>
-      <button class="secondary" onclick="generateAIReport()" style="background:var(--accent); border-color:var(--secondary); color:var(--secondary); font-weight:600;">AI Report</button>
+
+  <!-- Scrollable Content -->
+  <div class="dashboard-scroll">
+    <!-- Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Pending Pickups</h3>
+        <div class="value" id="statPending">0</div>
+        <div class="trend">Awaiting assignment</div>
+      </div>
+      <div class="stat-card">
+        <h3>Active Drivers</h3>
+        <div class="value" id="statDrivers">0</div>
+        <div class="trend">Currently busy</div>
+      </div>
+      <div class="stat-card">
+        <h3>Processed Today</h3>
+        <div class="value" id="statProcessed">0</div>
+        <div class="trend">Converted to BSF</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total Volume</h3>
+        <div class="value" id="statVolume">0 kg</div>
+        <div class="trend">This week</div>
+      </div>
     </div>
 
-    <div id="tableView">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th><th>Phone</th><th>Waste</th><th>Volume</th><th>Location</th><th>Status</th><th>Field worker</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="emptyStateTable" class="empty" style="display:none;">No requests in this view.</div>
+    <!-- Filters -->
+    <div class="filters-row">
+      <select id="statusFilter" class="filter-select" onchange="updateFilters()">
+        <option value="all">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="assigned">Assigned</option>
+        <option value="collected">Collected</option>
+        <option value="processed">Processed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
+      <select id="wasteFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Waste Types</option></select>
     </div>
 
-    <div id="cardView" style="display:none;">
-      <div id="cardsContainer" class="cards-container"></div>
-      <div id="emptyStateCard" class="empty" style="display:none;">No requests in this view.</div>
-    </div>
-  </main>
-</div>
+    <!-- Shipments List -->
+    <div class="section-title">Active Shipments & Requests</div>
+    <div id="shipmentsList" class="shipments-list"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">No shipments match your filters.</div>
+  </div>
+</main>
 
+<!-- Add Worker Dialog -->
 <dialog id="addWorkerDialog">
-  <h3 style="margin-top:0;">Add field worker</h3>
-  <input id="workerNameInput" type="text" placeholder="Full name" />
-  <input id="workerPhoneInput" type="text" placeholder="Phone" />
-  <input id="workerAreaInput" type="text" placeholder="Service Area" />
-  <div class="error" id="workerError"></div>
+  <h3 style="margin-top:0; color: var(--secondary);">Add Field Worker</h3>
+  <input id="workerNameInput" type="text" placeholder="Full Name" />
+  <input id="workerPhoneInput" type="text" placeholder="Phone Number" />
+  <input id="workerAreaInput" type="text" placeholder="Service Area (e.g., Westlands)" />
+  <div id="workerError" style="color: var(--danger); font-size: 13px;"></div>
   <div class="actions">
-    <button class="secondary" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
-    <button class="refresh" onclick="submitAddWorker()">Save</button>
+    <button class="btn btn-outline" onclick="document.getElementById('addWorkerDialog').close()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitAddWorker()">Save Worker</button>
   </div>
 </dialog>
 
+<!-- AI Report Dialog -->
 <dialog id="reportDialog">
-  <h3 style="margin-top:0;">Weekly AI Impact Report</h3>
-  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--bg); padding: 12px; border-radius: 6px; min-height: 100px;">Analyzing...</div>
+  <h3 style="margin-top:0; color: var(--secondary);">Weekly AI Impact Report</h3>
+  <div id="reportContent" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: var(--text-main); background: var(--bg); padding: 16px; border-radius: 8px; min-height: 120px; border: 1px solid var(--border);">Analyzing operational data...</div>
   <div class="actions">
-    <button class="refresh" onclick="document.getElementById('reportDialog').close()">Close</button>
+    <button class="btn btn-primary" onclick="document.getElementById('reportDialog').close()">Close</button>
   </div>
 </dialog>
 
 <script>
   const API_BASE = '';
-  let currentFilter = 'pending';
+  let currentFilter = 'all';
   let locationFilter = 'all';
   let wasteFilter = 'all';
-  let currentView = 'card'; // 'card' or 'table'
+  let searchQuery = '';
   let pollTimer = null;
   let workers = [];
 
@@ -215,9 +306,10 @@
     const ok = await load(true);
     if (ok) {
       document.getElementById('keyGate').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
+      document.getElementById('sidebar').style.display = 'flex';
+      document.getElementById('app').style.display = 'flex';
       if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(load, 10000);
+      pollTimer = setInterval(load, 15000);
     }
   }
   async function apiFetch(path, options = {}) {
@@ -227,14 +319,12 @@
     });
     if (res.status === 401) {
       localStorage.removeItem('gf_dashboard_key');
-      document.getElementById('app').style.display = 'none';
-      document.getElementById('keyGate').style.display = 'block';
-      document.getElementById('keyError').textContent = 'Access key rejected.';
+      location.reload();
       throw new Error('Unauthorized');
     }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Request failed: ' + res.status);
+      throw new Error(body.error || 'Request failed');
     }
     return res.json();
   }
@@ -246,23 +336,36 @@
       await loadWorkers();
       const data = await apiFetch('/api/pickup-requests');
       render(data);
-      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      updateStats(data);
       return true;
     } catch (e) { if (!silent) console.error(e); return false; }
   }
 
-  function setView(view) {
-    currentView = view;
-    document.getElementById('btnCardView').classList.toggle('active', view === 'card');
-    document.getElementById('btnTableView').classList.toggle('active', view === 'table');
-    document.getElementById('cardView').style.display = view === 'card' ? 'block' : 'none';
-    document.getElementById('tableView').style.display = view === 'table' ? 'block' : 'none';
+  function updateStats(data) {
+    document.getElementById('statPending').textContent = data.filter(r => r.status === 'pending').length;
+    document.getElementById('statDrivers').textContent = workers.filter(w => w.status === 'busy').length;
+    document.getElementById('statProcessed').textContent = data.filter(r => r.status === 'processed').length;
+    const totalVol = data.reduce((sum, r) => sum + (r.estimated_volume_kg || 0), 0);
+    document.getElementById('statVolume').textContent = totalVol.toLocaleString() + ' kg';
+  }
+
+  function handleSearch() {
+    searchQuery = document.getElementById('searchBox').value.toLowerCase();
+    const data = JSON.parse(document.getElementById('shipmentsList').dataset.currentData || '[]');
+    render(data);
   }
 
   function render(data) {
+    document.getElementById('shipmentsList').dataset.currentData = JSON.stringify(data);
     let filtered = currentFilter === 'all' ? data : data.filter(r => r.status === currentFilter);
     if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
     if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
+    if (searchQuery) {
+      filtered = filtered.filter(r => 
+        (r.patron_name || '').toLowerCase().includes(searchQuery) || 
+        (r.pickup_location || '').toLowerCase().includes(searchQuery)
+      );
+    }
 
     // Populate filters
     const locSelect = document.getElementById('locationFilter');
@@ -278,117 +381,80 @@
       });
     }
 
-    if (currentView === 'table') {
-      renderTable(filtered);
-    } else {
-      renderCards(filtered);
-    }
-  }
-
-  function renderTable(data) {
-    const rowsEl = document.getElementById('rows');
-    const emptyEl = document.getElementById('emptyStateTable');
-    rowsEl.innerHTML = '';
-    if (data.length === 0) { emptyEl.style.display = 'block'; return; }
-    emptyEl.style.display = 'none';
-
-    const workerOptions = (selectedId) => {
-      const opts = workers.map(w => {
-        const area = w.service_area ? ` - ${escapeHtml(w.service_area)}` : '';
-        const status = w.status === 'busy' ? ' (Busy)' : '';
-        return `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''} ${w.status === 'busy' ? 'disabled' : ''}>${escapeHtml(w.name)}${area}${status}</option>`;
-      }).join('');
-      return `<option value="">Choose worker...</option>` + opts;
-    };
-
-    for (const r of data) {
-      const tr = document.createElement('tr');
-      const statusOptions = ['pending', 'assigned', 'collected', 'processed', 'cancelled'].map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`).join('');
-      tr.innerHTML = `
-        <td>${escapeHtml(r.patron_name || '')}</td><td>${escapeHtml(r.patron_phone || '')}</td>
-        <td>${escapeHtml(r.waste_type || '')}</td><td>${r.estimated_volume_kg ?? ''} kg</td>
-        <td>${escapeHtml(r.pickup_location || '')}</td><td><span class="badge ${r.status}">${r.status}</span></td>
-        <td>${r.field_workers ? escapeHtml(r.field_workers.name) : '—'}</td>
-        <td>
-          <div class="assign-row">
-            <select class="worker-select" data-id="${r.id}">${workerOptions(r.worker_id)}</select>
-            <button data-id="${r.id}" class="assign-btn">Assign</button>
-            <button data-id="${r.id}" class="auto-assign-btn">Auto</button>
-          </div>
-          <select class="status-select" data-id="${r.id}" style="margin-top:6px;">${statusOptions}</select>
-        </td>`;
-      rowsEl.appendChild(tr);
-    }
-    attachTableEvents();
-  }
-
-  function renderCards(data) {
-    const container = document.getElementById('cardsContainer');
-    const emptyEl = document.getElementById('emptyStateCard');
+    const container = document.getElementById('shipmentsList');
+    const emptyEl = document.getElementById('emptyState');
     container.innerHTML = '';
-    if (data.length === 0) { emptyEl.style.display = 'block'; return; }
+    
+    if (filtered.length === 0) { emptyEl.style.display = 'block'; return; }
     emptyEl.style.display = 'none';
 
-    const groups = { pending: [], assigned: [], collected: [], processed: [], cancelled: [] };
-    data.forEach(r => { if (groups[r.status]) groups[r.status].push(r); });
-
-    for (const [status, items] of Object.entries(groups)) {
-      if (items.length === 0) continue;
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'status-group';
-      groupDiv.innerHTML = `<h3>${status.toUpperCase()} (${items.length})</h3>`;
+    filtered.forEach(r => {
+      const card = document.createElement('div');
+      card.className = 'shipment-card';
       
-      for (const r of items) {
-        const card = document.createElement('div');
-        card.className = 'card';
+      // Timeline Logic
+      const steps = ['Req', 'Driver', 'Pay', 'Pick', 'Drop', 'Done'];
+      let activeIndex = 0;
+      if (r.status === 'assigned') activeIndex = 1;
+      if (r.payment_received) activeIndex = 2;
+      if (r.status === 'collected') activeIndex = 3;
+      if (r.delivered_to_facility) activeIndex = 4;
+      if (r.status === 'processed') activeIndex = 5;
+      const progressWidth = (activeIndex / (steps.length - 1)) * 100;
+
+      const wasteIcons = { fruit_veg: '🍎', crop_residue: '🌾', manure: '💩' };
+      const icon = wasteIcons[r.waste_type] || '📦';
+
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="waste-icon">${icon}</div>
+            <div class="card-title">
+              <h4>${escapeHtml(r.patron_name || 'Unknown Patron')}</h4>
+              <p>ID: ${r.id.substring(0, 8)}... • ${new Date(r.created_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+          <span class="status-badge ${r.status}">${r.status}</span>
+        </div>
         
-        // Workflow progress calculation
-        const steps = ['pending', 'assigned', 'payment', 'collected', 'delivered', 'processed'];
-        let activeStep = 0;
-        if (r.status === 'assigned') activeStep = 1;
-        if (r.payment_received) activeStep = 2;
-        if (r.status === 'collected') activeStep = 3;
-        if (r.delivered_to_facility) activeStep = 4;
-        if (r.status === 'processed') activeStep = 5;
+        <div class="card-details-grid">
+          <div class="detail-item"><label>Waste Type</label><span>${escapeHtml(r.waste_type || '')}</span></div>
+          <div class="detail-item"><label>Volume</label><span>${r.estimated_volume_kg || 0} kg</span></div>
+          <div class="detail-item"><label>Pickup Location</label><span>${escapeHtml(r.pickup_location || '')}</span></div>
+          <div class="detail-item"><label>Assigned Driver</label><span>${r.field_workers ? escapeHtml(r.field_workers.name) : 'Unassigned'}</span></div>
+        </div>
 
-        const progressHTML = `
-          <div class="workflow-steps">
-            ${steps.map((_, i) => `<div class="step ${i <= activeStep ? 'active' : ''}"></div>`).join('')}
+        <div class="timeline-container">
+          <div class="timeline-track">
+            <div class="timeline-progress" style="width: ${progressWidth}%"></div>
+            ${steps.map((_, i) => `<div class="timeline-dot ${i <= activeIndex ? 'active' : ''}"></div>`).join('')}
           </div>
-          <div class="step-labels">
-            <span>Req</span><span>Driver</span><span>Pay</span><span>Pick</span><span>Drop</span><span>Done</span>
-          </div>`;
+          <div class="timeline-labels">${steps.map(s => `<span>${s}</span>`).join('')}</div>
+        </div>
 
-        card.innerHTML = `
-          <div class="card-header">
-            <h4>${escapeHtml(r.patron_name || 'Unknown')}</h4>
-            <span class="badge ${r.status}">${r.status}</span>
-          </div>
-          <div class="card-details">
-            <span><strong>Waste</strong>${escapeHtml(r.waste_type || '')}</span>
-            <span><strong>Volume</strong>${r.estimated_volume_kg ?? 0} kg</span>
-            <span><strong>Location</strong>${escapeHtml(r.pickup_location || '')}</span>
-            <span><strong>Driver</strong>${r.field_workers ? escapeHtml(r.field_workers.name) : 'Unassigned'}</span>
-          </div>
-          ${progressHTML}
-          <div class="card-actions">
-            <label class="checkbox-label">
-              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> Payment Received
+        <div class="card-footer">
+          <div class="checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> 
+              Payment Received
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> Delivered to Facility
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> 
+              Delivered to Facility
             </label>
           </div>
-          <div class="assign-row">
+          <div class="action-group">
             <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
-            <button data-id="${r.id}" class="assign-btn">Assign</button>
-            <button data-id="${r.id}" class="auto-assign-btn">Auto</button>
-          </div>`;
-        groupDiv.appendChild(card);
-      }
-      container.appendChild(groupDiv);
-    }
-    attachCardEvents();
+            <button class="btn btn-primary btn-sm" onclick="assignWorker('${r.id}', this)">Assign</button>
+            <button class="btn btn-auto btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
+            <select class="filter-select" style="min-width: 120px;" onchange="changeStatus('${r.id}', this.value)">
+              ${['pending', 'assigned', 'collected', 'processed', 'cancelled'].map(s => `<option value="${s}" ${s === r.status ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
   }
 
   function getWorkerOptions(selectedId) {
@@ -401,61 +467,20 @@
   }
 
   async function toggleField(id, field, value) {
-    try {
-      await apiFetch(`/api/pickup-requests/${id}/update`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) });
-      await load();
-    } catch (e) { alert(e.message); }
+    try { await apiFetch(`/api/pickup-requests/${id}/update`, { method: 'PATCH', body: JSON.stringify({ [field]: value }) }); await load(); } catch (e) { alert(e.message); }
   }
-
-  function attachTableEvents() {
-    document.querySelectorAll('.assign-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const select = document.querySelector(`.worker-select[data-id="${id}"]`);
-        if (!select.value) return;
-        btn.disabled = true;
-        try {
-          await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) });
-          await load();
-        } catch (e) { alert(e.message); } finally { btn.disabled = false; }
-      });
-    });
-    document.querySelectorAll('.auto-assign-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        btn.disabled = true; btn.textContent = 'Routing...';
-        try {
-          const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' });
-          alert(`Success: Assigned to ${result.worker} (${result.assignmentType})`);
-          await load();
-        } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
-      });
-    });
-    document.querySelectorAll('.status-select').forEach(sel => {
-      sel.addEventListener('change', async () => {
-        const id = sel.dataset.id;
-        try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: sel.value }) }); await load(); } catch (e) { alert(e.message); }
-      });
-    });
+  async function assignWorker(id, btn) {
+    const select = document.querySelector(`.worker-select[data-id="${id}"]`);
+    if (!select.value) return alert('Please select a worker');
+    btn.disabled = true; btn.textContent = '...';
+    try { await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) }); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Assign'; }
   }
-
-  function attachCardEvents() {
-    document.querySelectorAll('.assign-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const select = document.querySelector(`.worker-select[data-id="${id}"]`);
-        if (!select.value) return;
-        btn.disabled = true;
-        try { await apiFetch(`/api/pickup-requests/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ worker_id: select.value }) }); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; }
-      });
-    });
-    document.querySelectorAll('.auto-assign-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        btn.disabled = true; btn.textContent = 'Routing...';
-        try { const result = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' }); alert(`Success: Assigned to ${result.worker}`); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
-      });
-    });
+  async function autoAssign(id, btn) {
+    btn.disabled = true; btn.textContent = '...';
+    try { const res = await apiFetch(`/api/pickup-requests/${id}/auto-assign`, { method: 'POST' }); alert(`Assigned to ${res.worker}`); await load(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = 'Auto'; }
+  }
+  async function changeStatus(id, status) {
+    try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load(); } catch (e) { alert(e.message); }
   }
 
   function openAddWorker() {
@@ -478,21 +503,13 @@
   }
   function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentFilter = tab.dataset.filter;
-      load();
-    });
-  });
-
   async function generateAIReport() {
     document.getElementById('reportContent').textContent = 'Analyzing data...';
     document.getElementById('reportDialog').showModal();
     try { const result = await apiFetch('/api/reports/weekly-impact'); document.getElementById('reportContent').textContent = result.report; } catch (e) { document.getElementById('reportContent').textContent = 'Error: ' + e.message; }
   }
   function updateFilters() {
+    currentFilter = document.getElementById('statusFilter').value;
     locationFilter = document.getElementById('locationFilter').value;
     wasteFilter = document.getElementById('wasteFilter').value;
     load();
