@@ -180,23 +180,39 @@
   let locationFilter = 'all';
   let wasteFilter = 'all';
   let workers = [];
-  const wasteEmojis = { 'processing': '🏭', 'market': '🛒', 'restaurant': '🍽️', 'household': '🏠', 'agriculture': '🌾', 'institutional': '🏫' };
+  const wasteEmojis = { 'processing': '🏭', 'market': '🛒', 'restaurant': '️', 'household': '🏠', 'agriculture': '🌾', 'institutional': '🏫' };
 
   function getKey() { return localStorage.getItem('gf_key') || ''; }
+  
   function saveKey() {
+    console.log('saveKey called');
     const val = document.getElementById('keyInput').value.trim();
-    if (!val) return;
+    console.log('Key value:', val ? 'present' : 'empty');
+    if (!val) {
+      document.getElementById('keyError').textContent = 'Please enter a key';
+      return;
+    }
     localStorage.setItem('gf_key', val);
     document.getElementById('keyError').textContent = '';
+    console.log('Key saved, calling enterApp');
     enterApp();
   }
   
   async function enterApp() {
-    const ok = await load(true);
-    if (ok) {
-      document.getElementById('keyGate').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      document.getElementById('sidebar').style.display = 'flex';
+    console.log('enterApp called');
+    try {
+      const ok = await load(true);
+      console.log('load result:', ok);
+      if (ok) {
+        document.getElementById('keyGate').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('sidebar').style.display = 'flex';
+      } else {
+        document.getElementById('keyError').textContent = 'Invalid key or server error';
+      }
+    } catch (e) {
+      console.error('enterApp error:', e);
+      document.getElementById('keyError').textContent = 'Error: ' + e.message;
     }
   }
 
@@ -252,7 +268,6 @@
     if (locationFilter !== 'all') filtered = filtered.filter(r => r.pickup_location === locationFilter);
     if (wasteFilter !== 'all') filtered = filtered.filter(r => r.waste_type === wasteFilter);
 
-    // Populate filters
     const locSelect = document.getElementById('locationFilter');
     const wasteSelect = document.getElementById('wasteFilter');
     if (locSelect.options.length <= 1) {
@@ -281,7 +296,7 @@
     filtered.forEach(r => {
       const card = document.createElement('div');
       card.className = `shipment-card status-${r.status}`;
-      const emoji = wasteEmojis[r.waste_type] || '🚮';  
+      const emoji = wasteEmojis[r.waste_type] || '🚮';
       
       card.innerHTML = `
         <div class="card-header">
@@ -368,7 +383,11 @@
     }
   }
 
-  if (getKey()) enterApp();
+  // Auto-login if key exists
+  if (getKey()) {
+    console.log('Auto-login attempt');
+    enterApp();
+  }
 </script>
 </body>
 </html>
