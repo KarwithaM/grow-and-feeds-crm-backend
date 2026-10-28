@@ -72,7 +72,7 @@
 
   .dashboard-scroll { flex: 1; overflow-y: auto; padding: 32px; }
   #map-container { height: 450px; width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); z-index: 1; }
-  .custom-facility-icon, .custom-driver-icon, .custom-zone-icon { background: transparent !important; border: none !important; }
+  .custom-facility-icon, .custom-driver-icon { background: transparent !important; border: none !important; }
   .filters-row { display: flex; gap: 12px; margin-bottom: 28px; align-items: center; flex-wrap: wrap; }
   .filter-select { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; outline: none; cursor: pointer; font-weight: 500; }
   .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
@@ -261,30 +261,38 @@
   const statusToStep = { 'pending': 0, 'assigned': 1, 'collected': 3, 'processed': 5, 'cancelled': -1 };
 
   // Vehicle emoji mapping
-  const vehicleEmojis = {
-    'handcart': '🛒',
-    'pickup': '🛻',
-    'mini_truck': '🚛',
-    'trailer': '🚍'
-  };
+  const vehicleEmojis = { 'handcart': '', 'pickup': '', 'mini_truck': '', 'trailer': '🚛' };
 
-  // Nairobi Zones Coordinates
+  // Nairobi Zones Coordinates (Expanded for Mock Drivers)
   const nairobiZones = {
-    'city park market': { lat: -1.2700, lng: 36.8200, type: 'Market' },
-    'marikiti': { lat: -1.2850, lng: 36.8250, type: 'Market' },
-    'wakulima': { lat: -1.2850, lng: 36.8250, type: 'Market' },
-    'korogocho': { lat: -1.2200, lng: 36.8700, type: 'Market' },
-    'ngara': { lat: -1.2750, lng: 36.8400, type: 'Market' },
-    'githurai': { lat: -1.2100, lng: 36.8900, type: 'Market' },
-    'industrial area': { lat: -1.3100, lng: 36.8300, type: 'Industrial' },
-    'syokimau': { lat: -1.3600, lng: 36.9200, type: 'Industrial' },
-    'ngong road': { lat: -1.3100, lng: 36.7800, type: 'Industrial' },
-    'westlands': { lat: -1.2650, lng: 36.8050, type: 'Residential' },
-    'eastleigh': { lat: -1.2700, lng: 36.8500, type: 'Residential' },
-    'kilimani': { lat: -1.2950, lng: 36.7800, type: 'Residential' },
-    'eastlands': { lat: -1.2900, lng: 36.8600, type: 'Residential' },
-    'kileleshwa': { lat: -1.2850, lng: 36.7700, type: 'Residential' },
-    'kibera': { lat: -1.3100, lng: 36.7800, type: 'Residential' }
+    'city park market': { lat: -1.2700, lng: 36.8200 },
+    'marikiti': { lat: -1.2850, lng: 36.8250 },
+    'wakulima': { lat: -1.2850, lng: 36.8250 },
+    'korogocho': { lat: -1.2200, lng: 36.8700 },
+    'ngara': { lat: -1.2750, lng: 36.8400 },
+    'githurai': { lat: -1.2100, lng: 36.8900 },
+    'industrial area': { lat: -1.3100, lng: 36.8300 },
+    'syokimau': { lat: -1.3600, lng: 36.9200 },
+    'ngong road': { lat: -1.3100, lng: 36.7800 },
+    'westlands': { lat: -1.2650, lng: 36.8050 },
+    'eastleigh': { lat: -1.2700, lng: 36.8500 },
+    'kilimani': { lat: -1.2950, lng: 36.7800 },
+    'eastlands': { lat: -1.2900, lng: 36.8600 },
+    'kileleshwa': { lat: -1.2850, lng: 36.7700 },
+    'kibera': { lat: -1.3100, lng: 36.7800 },
+    // Mock Driver Locations
+    'kasarani': { lat: -1.2200, lng: 36.9000 },
+    'garden estate': { lat: -1.2300, lng: 36.8500 },
+    'runda': { lat: -1.2300, lng: 36.8000 },
+    'langata': { lat: -1.3500, lng: 36.7500 },
+    'karen': { lat: -1.3600, lng: 36.7000 },
+    'south b': { lat: -1.3200, lng: 36.8500 },
+    'buruburu': { lat: -1.2800, lng: 36.8800 },
+    'imara daima': { lat: -1.3200, lng: 36.9000 },
+    'embakasi': { lat: -1.3200, lng: 36.9200 },
+    'kawangware': { lat: -1.2900, lng: 36.7300 },
+    'mutuini': { lat: -1.2700, lng: 36.7200 },
+    'kabiria': { lat: -1.2800, lng: 36.7200 }
   };
 
   // Facility Hubs
@@ -294,37 +302,28 @@
     { name: 'Kibera BSF Hub', locationKey: 'kibera' }
   ];
 
-  // Mock Drivers - spread across N, S, E, W + Central
+  // Mock Drivers
   const mockDrivers = [
-    // NORTH NAIROBI (Kasarani, Garden Estate, Runda area)
     { id: 'mock-n1', name: 'James Mwangi', service_area: 'Kasarani', vehicle_type: 'handcart', vehicle_plate: 'KCA 101A', status: 'available' },
     { id: 'mock-n2', name: 'Peter Ochieng', service_area: 'Kasarani', vehicle_type: 'handcart', vehicle_plate: 'KCA 102B', status: 'available' },
     { id: 'mock-n3', name: 'Samuel Kiprop', service_area: 'Garden Estate', vehicle_type: 'pickup', vehicle_plate: 'KCB 201C', status: 'available' },
     { id: 'mock-n4', name: 'David Njoroge', service_area: 'Garden Estate', vehicle_type: 'pickup', vehicle_plate: 'KCB 202D', status: 'busy' },
     { id: 'mock-n5', name: 'Michael Wainaina', service_area: 'Runda', vehicle_type: 'mini_truck', vehicle_plate: 'KCC 301E', status: 'available' },
-    
-    // SOUTH NAIROBI (Langata, Karen, South B area)
     { id: 'mock-s1', name: 'John Kamau', service_area: 'Langata', vehicle_type: 'handcart', vehicle_plate: 'KCD 401F', status: 'available' },
     { id: 'mock-s2', name: 'Joseph Mutua', service_area: 'Langata', vehicle_type: 'handcart', vehicle_plate: 'KCD 402G', status: 'busy' },
     { id: 'mock-s3', name: 'Daniel Kariuki', service_area: 'Karen', vehicle_type: 'pickup', vehicle_plate: 'KCE 501H', status: 'available' },
     { id: 'mock-s4', name: 'Patrick Omondi', service_area: 'Karen', vehicle_type: 'pickup', vehicle_plate: 'KCE 502I', status: 'available' },
     { id: 'mock-s5', name: 'Stephen Muthomi', service_area: 'South B', vehicle_type: 'mini_truck', vehicle_plate: 'KCF 601J', status: 'available' },
-    
-    // EAST NAIROBI (Buruburu, Imara Daima, Embakasi area)
     { id: 'mock-e1', name: 'Francis Odhiambo', service_area: 'Buruburu', vehicle_type: 'handcart', vehicle_plate: 'KCG 701K', status: 'available' },
     { id: 'mock-e2', name: 'George Wekesa', service_area: 'Buruburu', vehicle_type: 'handcart', vehicle_plate: 'KCG 702L', status: 'available' },
     { id: 'mock-e3', name: 'Henry Kibet', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 801M', status: 'busy' },
     { id: 'mock-e4', name: 'Isaac Rotich', service_area: 'Imara Daima', vehicle_type: 'pickup', vehicle_plate: 'KCH 802N', status: 'available' },
     { id: 'mock-e5', name: 'Jacob Chebet', service_area: 'Embakasi', vehicle_type: 'mini_truck', vehicle_plate: 'KCI 901O', status: 'available' },
-    
-    // WEST NAIROBI (Kawangware, Mutuini, Kabiria area)
     { id: 'mock-w1', name: 'Kevin Langat', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 111P', status: 'available' },
     { id: 'mock-w2', name: 'Leonard Bett', service_area: 'Kawangware', vehicle_type: 'handcart', vehicle_plate: 'KCJ 112Q', status: 'available' },
     { id: 'mock-w3', name: 'Martin Kosgei', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 221R', status: 'available' },
     { id: 'mock-w4', name: 'Nelson Rono', service_area: 'Mutuini', vehicle_type: 'pickup', vehicle_plate: 'KCK 222S', status: 'busy' },
     { id: 'mock-w5', name: 'Oscar Kipchoge', service_area: 'Kabiria', vehicle_type: 'mini_truck', vehicle_plate: 'KCL 331T', status: 'available' },
-    
-    // CENTRAL NAIROBI (CBD, Ngara, Eastleigh - 1 Trailer)
     { id: 'mock-c1', name: 'Paul Maina', service_area: 'Ngara', vehicle_type: 'trailer', vehicle_plate: 'KCM 441U', status: 'available' }
   ];
 
@@ -373,7 +372,7 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add Facility Markers with industry emoji
+    // Add Facility Markers
     facilities.forEach(fac => {
       const zone = nairobiZones[fac.locationKey];
       if (zone) {
@@ -387,33 +386,45 @@
     updateMapDrivers();
   }
 
+  function getWasteColor(wasteType) {
+    if (!wasteType) return '#6B7280'; // Grey default
+    const wt = wasteType.toLowerCase();
+    if (wt.includes('agriculture') || wt.includes('manure')) return '#8A5A2B'; // Brown
+    if (wt.includes('processing') || wt.includes('market') || wt.includes('fruit')) return '#F4B13B'; // Yellow
+    if (wt.includes('restaurant') || wt.includes('household') || wt.includes('cooked')) return '#0F3D3A'; // Dark Green
+    if (wt.includes('institutional')) return '#6FA9BB'; // Blue
+    return '#6B7280';
+  }
+
   function updateMapZones(data) {
     mapLayers.zones.forEach(m => map.removeLayer(m));
     mapLayers.zones = [];
 
     const uniqueLocations = [...new Set(data.map(r => r.pickup_location).filter(Boolean))];
-    const locationsToMap = uniqueLocations.length > 0 ? uniqueLocations : Object.keys(nairobiZones);
+    if (uniqueLocations.length === 0) return;
 
-    locationsToMap.forEach(loc => {
+    uniqueLocations.forEach(loc => {
       const locLower = loc.toLowerCase();
       const zoneKey = Object.keys(nairobiZones).find(z => locLower.includes(z) || z.includes(locLower));
       
       if (zoneKey) {
         const zone = nairobiZones[zoneKey];
-        const color = zone.type === 'Market' ? '#F4B13B' : zone.type === 'Industrial' ? '#E0745E' : '#0F3D3A';
+        
+        // Find dominant waste type for coloring
+        const pickupsAtLoc = data.filter(r => r.pickup_location && r.pickup_location.toLowerCase().includes(zoneKey));
+        let dominantWaste = pickupsAtLoc[0]?.waste_type || 'unknown';
+        const color = getWasteColor(dominantWaste);
         
         const marker = L.circleMarker([zone.lat, zone.lng], {
           radius: 10, fillColor: color, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9
         }).addTo(map);
 
-        const pickups = data.filter(r => r.pickup_location && r.pickup_location.toLowerCase().includes(zoneKey));
-        
         let popupContent = `<b>${loc}</b><br><br>`;
-        if (pickups.length === 0) {
+        if (pickupsAtLoc.length === 0) {
           popupContent += `<i>No active pickups.</i>`;
         } else {
-          popupContent += `<b>Active Pickups (${pickups.length}):</b><ul style="margin: 8px 0 0 20px; padding: 0;">`;
-          pickups.forEach(p => {
+          popupContent += `<b>Active Pickups (${pickupsAtLoc.length}):</b><ul style="margin: 8px 0 0 20px; padding: 0;">`;
+          pickupsAtLoc.forEach(p => {
             popupContent += `<li style="margin-bottom: 4px;"><b>${p.patron_name}</b> - ${p.estimated_volume_kg}kg ${p.waste_type}<br><small style="color: #666;">Status: ${p.status}</small></li>`;
           });
           popupContent += `</ul>`;
@@ -469,7 +480,6 @@
   async function load(silent) {
     try {
       const realWorkers = await apiFetch('/api/field-workers');
-      // Merge real workers with mock drivers
       workers = [...realWorkers, ...mockDrivers];
       currentData = await apiFetch('/api/pickup-requests');
       render(currentData);
