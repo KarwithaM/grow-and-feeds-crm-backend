@@ -650,7 +650,7 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       .in('status', ['collected', 'processed', 'delivered'])
       .gte('created_at', isoSevenDaysAgo);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) throw new Error(`Supabase error: ${error.message}`);
 
     if (!data || data.length === 0) {
       return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
@@ -675,8 +675,11 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
+    console.log('🤖 Attempting AI generation with model: Qwen-Ambassador/Qwen3.7-Max');
+    console.log(' Data summary:', promptData);
+
     const qwenResponse = await qwenClient.chat.completions.create({
-      model: 'Qwen/Qwen2.5-72B-Instruct',
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
       messages: [
         {
           role: 'system',
@@ -691,9 +694,20 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       max_tokens: 250
     });
 
+    console.log('✅ AI generation successful:', qwenResponse.choices[0].message.content.substring(0, 100) + '...');
     res.json({ report: qwenResponse.choices[0].message.content });
+    
   } catch (error) {
-    console.error('AI Report Generation Error:', error);
+    // DETAILED ERROR LOGGING
+    console.error('❌ AI REPORT FAILED - FULL DETAILS:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    if (error.response) {
+      console.error('API Response status:', error.response.status);
+      console.error('API Response data:', JSON.stringify(error.response.data, null, 2));
+    }
+    console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    
     res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
   }
 });
