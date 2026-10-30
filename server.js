@@ -640,20 +640,26 @@ app.patch('/api/pickup-requests/:id/process', requireDashboardKey, async (req, r
 
 app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+    // 1. Get the number of days from query, default to 7
+    const days = parseInt(req.query.days) || 7;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const isoStartDate = startDate.toISOString();
+
+    // 2. Format today's date dynamically for the report header
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const periodText = days === 7 ? "This week" : `Over the last ${days} days`;
 
     const { data, error } = await supabase
       .from('pickup_requests')
       .select('estimated_volume_kg, waste_type, pickup_location, status')
       .in('status', ['collected', 'processed', 'delivered'])
-      .gte('created_at', isoSevenDaysAgo);
+      .gte('created_at', isoStartDate);
 
     if (error) throw new Error(`Supabase error: ${error.message}`);
 
     if (!data || data.length === 0) {
-      return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
+      return res.json({ report: `No completed pickups found in the last ${days} days. Keep up the great outreach to local farmers and vendors!` });
     }
 
     const totalKg = data.reduce((sum, row) => sum + (row.estimated_volume_kg || 0), 0);
@@ -668,38 +674,51 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
     const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
 
+    // 3. Pass the dynamic date and period into the prompt data
     const promptData = `
+      Period: ${periodText} (ending ${today})
       Total completed pickups: ${data.length}
       Total weight diverted: ${totalKg} kg
       Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
-    // FREE AI GENERATION (No API Key Required)
-    const fullPrompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
-
-    console.log('🤖 Generating free AI report via Pollinations.ai (OpenAI-compatible)...');
+    console.log(`🤖 Generating AI report for the last ${days} days...`);
     
-    // CORRECT: Use the /openai endpoint for {"messages": [...]} payloads
-    const aiResponse = await fetch('https://text.pollinations.ai/openai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'openai', // Uses the default available model (e.g., GPT-OSS 20B)
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed.' 
-          },
-          { 
-            role: 'user', 
-            content: `Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.` 
-          }
-        ]
-      })
+    const qwenResponse = await qwenClient.chat.completions.create({
+      model: 'Qwen-Ambassador/Qwen3.7-Max', // Or your working model
+      messages: [
+        {
+          role: 'system',
+          // 4. Explicitly forbid markdown formatting
+          content: `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. 
+          Write a short, inspiring, professional impact report (under 150 words) based on the provided data. 
+          Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). 
+          Use a professional, encouraging tone. 
+          CRITICAL: Do NOT use any markdown formatting like ** or #. Output plain text only.`
+        },
+        {
+          role: 'user',
+          content: `Generate a ${periodText.toLowerCase()} impact report based on this operational data:\n${promptData}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
     });
+
+    let reportText = qwenResponse.choices[0].message.content;
+    
+    // 5. Safety net: Strip any stray asterisks or hash symbols
+    reportText = reportText.replace(/\*\*/g, '').replace(/^#\s+/gm, '');
+    
+    console.log('✅ AI report generated successfully!');
+    res.json({ report: reportText });
+    
+  } catch (error) {
+    console.error('❌ AI REPORT FAILED:', error.message);
+    res.json({ report: "Impact Report: Successfully diverted organic waste from landfills, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
+  }
+});
 
     if (!aiResponse.ok) {
       throw new Error(`Free AI API failed with status ${aiResponse.status}`);
