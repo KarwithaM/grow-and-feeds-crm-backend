@@ -680,9 +680,9 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
 
     console.log('🤖 Generating free AI report via Pollinations.ai...');
     
-    // Pollinations.ai requires no authentication and is completely free
+    // Use query parameter format for better handling of long prompts
     const encodedPrompt = encodeURIComponent(fullPrompt);
-    const aiResponse = await fetch(`https://text.pollinations.ai/${encodedPrompt}?model=mistral&seed=42`);
+    const aiResponse = await fetch(`https://text.pollinations.ai/?prompt=${encodedPrompt}&model=mistral&seed=42`);
     
     if (!aiResponse.ok) {
       throw new Error(`Free AI API failed with status ${aiResponse.status}`);
