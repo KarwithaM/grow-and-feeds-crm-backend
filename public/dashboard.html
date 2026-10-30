@@ -681,15 +681,35 @@
           </div>
           <div class="timeline-labels">${steps.map(s => `<span>${s}</span>`).join('')}</div>
         </div>
-        <div class="card-footer">
+          <div class="card-footer">
           <div class="checkbox-group">
             <label class="custom-checkbox">
-              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> Payment Received
+              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> 
+              Payment Received
             </label>
             <label class="custom-checkbox">
-              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> Delivered to Facility
+              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> 
+              Delivered to Facility
+            </label>
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.processed ? 'checked' : ''} onchange="toggleField('${r.id}', 'processed', this.checked)"> 
+              Processed (Done)
             </label>
           </div>
+          <div class="action-group">
+            <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
+            <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
+            <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
+            <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
+              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Request</option>
+              <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Driver Assigned</option>
+              <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Picked Up</option>
+              <option value="delivered" ${r.status === 'delivered' ? 'selected' : ''}>Dropped at Facility</option>
+              <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed (Done)</option>
+              <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+            </select>
+          </div>
+        </div>
           <div class="action-group">
             <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
             <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
@@ -762,6 +782,12 @@
     document.getElementById('reportDialog').showModal();
     try { const result = await apiFetch('/api/reports/weekly-impact'); document.getElementById('reportContent').textContent = result.report; } catch (e) { document.getElementById('reportContent').textContent = 'Error: ' + e.message; }
   }
+
+  if (getKey()) enterApp();
+  // Auto-refresh dashboard every 10 seconds
+  setInterval(() => {
+    load(true);
+  }, 10000);
 
   if (getKey()) enterApp();
 </script>
