@@ -675,50 +675,28 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
-    // 🔍 DEBUG LOGGING FOR API KEY
-    const apiKey = process.env.QWEN_API_KEY ? process.env.QWEN_API_KEY.trim() : '';
-    console.log('🔑 API Key present:', !!apiKey);
-    console.log('🔑 API Key length:', apiKey.length);
-    console.log('🔑 API Key preview:', apiKey ? apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4) : 'NONE');
+    // FREE AI GENERATION (No API Key Required)
+    const fullPrompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
 
-    if (!apiKey) {
-      throw new Error('QWEN_API_KEY is missing from environment variables!');
+    console.log('🤖 Generating free AI report via Pollinations.ai...');
+    
+    // Pollinations.ai requires no authentication and is completely free
+    const encodedPrompt = encodeURIComponent(fullPrompt);
+    const aiResponse = await fetch(`https://text.pollinations.ai/${encodedPrompt}?model=mistral&seed=42`);
+    
+    if (!aiResponse.ok) {
+      throw new Error(`Free AI API failed with status ${aiResponse.status}`);
     }
-
-    // Re-initialize client with trimmed key to be absolutely safe
-    const debugQwenClient = new OpenAI({ 
-      baseURL: 'https://api-inference.modelscope.ai/v1', 
-      apiKey: apiKey 
-    });
-
-    console.log('🤖 Attempting AI generation with model: Qwen-Ambassador/Qwen3.7-Max');
-
-    const qwenResponse = await debugQwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
-        },
-        {
-          role: 'user',
-          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 250
-    });
-
-    console.log('✅ AI generation successful!');
-    res.json({ report: qwenResponse.choices[0].message.content });
+    
+    const reportText = await aiResponse.text();
+    console.log('✅ Free AI report generated successfully!');
+    
+    res.json({ report: reportText });
     
   } catch (error) {
-    console.error('❌ AI REPORT FAILED - FULL DETAILS:');
-    console.error('Error message:', error.message);
-    if (error.response) {
-      console.error('API Response data:', JSON.stringify(error.response.data, null, 2));
-    }
+    console.error('❌ AI REPORT FAILED:', error.message);
     
+    // Graceful fallback just in case the free API is temporarily busy
     res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
   }
 });
