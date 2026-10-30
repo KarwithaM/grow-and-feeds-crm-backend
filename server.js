@@ -669,14 +669,23 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
 
     const prompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. 
-    Write a short, inspiring, professional impact report (under 150 words) based on this data:
-    - Period: Last ${days} days
-    - Total completed pickups: ${data.length}
-    - Total weight diverted: ${totalKg} kg
-    - Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
-    - Most active location: ${topLocation} (${locations[topLocation]} pickups)
-    
-    Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
+Write a short, inspiring, professional impact report (under 150 words) based on this data:
+- Period: Last ${days} days
+- Total completed pickups: ${data.length}
+- Total weight diverted: ${totalKg} kg
+- Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+- Most active location: ${topLocation} (${locations[topLocation]} pickups)
+
+Calculate the environmental impact by stating the total estimated methane/CO2 equivalent emissions prevented. 
+Use this standard scientific formula for your math: Diverting 1 kg of organic waste from a landfill prevents approximately 0.5 kg of methane/CO2 equivalent emissions. 
+
+Highlight the positive impact on circular agriculture. 
+Use a professional, encouraging tone. 
+
+RULES: 
+  1) Refer to waste types as "waste" or "materials", never "dishes". 
+  2) For 30-day reports, say "this month", never "this quarter". 
+  3) Do NOT use any markdown formatting like ** or #. Output plain text only.`;
 
     console.log(`🤖 Generating AI report via Pollinations AI for the last ${days} days...`);
     
