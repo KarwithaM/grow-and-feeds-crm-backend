@@ -480,7 +480,6 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   const { data: request, error: reqError } = await supabase.from('pickup_requests').select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, worker_id, secondary_worker_id').eq('id', id).maybeSingle();
   if (reqError || !request) return res.status(404).json({ error: 'Request not found' });
 
-  // FREE PREVIOUS DRIVERS if reassigning
   if (request.worker_id && request.worker_id !== workerId) {
     await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
   }
@@ -640,13 +639,11 @@ app.patch('/api/pickup-requests/:id/process', requireDashboardKey, async (req, r
 
 app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   try {
-    // 1. Get the number of days from query, default to 7
     const days = parseInt(req.query.days) || 7;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const isoStartDate = startDate.toISOString();
 
-    // 2. Format today's date dynamically for the report header
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const periodText = days === 7 ? "This week" : `Over the last ${days} days`;
 
@@ -674,7 +671,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
     const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
 
-    // 3. Pass the dynamic date and period into the prompt data
     const promptData = `
       Period: ${periodText} (ending ${today})
       Total completed pickups: ${data.length}
@@ -686,11 +682,10 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     console.log(`🤖 Generating AI report for the last ${days} days...`);
     
     const qwenResponse = await qwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max', // Or your working model
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
       messages: [
         {
           role: 'system',
-          // 4. Explicitly forbid markdown formatting
           content: `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. 
           Write a short, inspiring, professional impact report (under 150 words) based on the provided data. 
           Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). 
@@ -707,8 +702,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     });
 
     let reportText = qwenResponse.choices[0].message.content;
-    
-    // 5. Safety net: Strip any stray asterisks or hash symbols
     reportText = reportText.replace(/\*\*/g, '').replace(/^#\s+/gm, '');
     
     console.log('✅ AI report generated successfully!');
@@ -717,25 +710,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   } catch (error) {
     console.error('❌ AI REPORT FAILED:', error.message);
     res.json({ report: "Impact Report: Successfully diverted organic waste from landfills, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
-  }
-});
-
-    if (!aiResponse.ok) {
-      throw new Error(`Free AI API failed with status ${aiResponse.status}`);
-    }
-    
-    // FIX: Renamed from `data` to `responseData` to prevent "Identifier 'data' has already been declared" error
-    const responseData = await aiResponse.json();
-    const reportText = responseData.choices[0].message.content;
-    
-    console.log('✅ Free AI report generated successfully!');
-    res.json({ report: reportText });
-    
-  } catch (error) {
-    console.error('❌ AI REPORT FAILED:', error.message);
-    
-    // Graceful fallback just in case the free API is temporarily busy
-    res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
   }
 });
 
