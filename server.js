@@ -432,7 +432,7 @@ const qwenClient = new OpenAI({ baseURL: 'https://api-inference.modelscope.ai/v1
 async function getAIResponse(userMessage) {
   try {
     const response = await qwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max', // <-- Ensure this matches your allowed list
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
       messages: [{ role: 'system', content: 'You are a helpful assistant for Grow and Feeds Patrons.' }, { role: 'user', content: userMessage }],
       temperature: 0.7, max_tokens: 150
     });
@@ -680,7 +680,7 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
 
     console.log('🤖 Generating free AI report via Pollinations.ai (OpenAI-compatible)...');
     
-    // ✅ CORRECT: Use the /openai endpoint for {"messages": [...]} payloads
+    // CORRECT: Use the /openai endpoint for {"messages": [...]} payloads
     const aiResponse = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       headers: {
@@ -705,9 +705,9 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       throw new Error(`Free AI API failed with status ${aiResponse.status}`);
     }
     
-    // Parse the OpenAI-compatible JSON response
-    const data = await aiResponse.json();
-    const reportText = data.choices[0].message.content;
+    // FIX: Renamed from `data` to `responseData` to prevent "Identifier 'data' has already been declared" error
+    const responseData = await aiResponse.json();
+    const reportText = responseData.choices[0].message.content;
     
     console.log('✅ Free AI report generated successfully!');
     res.json({ report: reportText });
