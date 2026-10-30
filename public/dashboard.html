@@ -195,12 +195,12 @@
     <div id="map-container"></div>
     <div class="filters-row">
       <select id="statusFilter" class="filter-select" onchange="updateFilters()">
-        <option value="all">All Statuses</option>
-        <option value="pending">Pending</option>
-        <option value="assigned">Assigned</option>
-        <option value="collected">Collected</option>
-        <option value="delivered">Delivered</option>
-        <option value="processed">Processed</option>
+        <option value="all">All Stages</option>
+        <option value="pending">Request Pending</option>
+        <option value="assigned">Driver Assigned</option>
+        <option value="collected">Picked Up</option>
+        <option value="delivered">Dropped at Facility</option>
+        <option value="processed">Processed (Done)</option>
         <option value="cancelled">Cancelled</option>
       </select>
       <select id="locationFilter" class="filter-select" onchange="updateFilters()"><option value="all">All Locations</option></select>
@@ -260,7 +260,6 @@
   
   const wasteEmojis = { 'processing': '', 'market': '', 'restaurant': '️', 'household': '', 'agriculture': '', 'institutional': '' };
   const statusToStep = { 'pending': 0, 'assigned': 1, 'collected': 3, 'delivered': 4, 'processed': 5, 'cancelled': -1 };
-
   const vehicleEmojis = { 
     'handcart': '🛺', 
     'pickup': '🛻', 
@@ -613,29 +612,25 @@
         </div>
         <div class="card-footer">
           <div class="checkbox-group">
-            <label class="custom-checkbox">
-              <input type="checkbox" ${r.payment_received ? 'checked' : ''} onchange="toggleField('${r.id}', 'payment_received', this.checked)"> 
+            <label class="custom-checkbox" style="opacity: ${r.payment_received ? 1 : 0.5}; cursor: default;">
+              <input type="checkbox" ${r.payment_received ? 'checked' : ''} disabled> 
               Payment Received
             </label>
-            <label class="custom-checkbox">
-              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} onchange="toggleField('${r.id}', 'delivered_to_facility', this.checked)"> 
+            <label class="custom-checkbox" style="opacity: ${r.delivered_to_facility ? 1 : 0.5}; cursor: default;">
+              <input type="checkbox" ${r.delivered_to_facility ? 'checked' : ''} disabled> 
               Delivered to Facility
+            </label>
+            <label class="custom-checkbox">
+              <input type="checkbox" ${r.status === 'processed' ? 'checked' : ''} onchange="toggleProcessed('${r.id}', this.checked)"> 
+              Processed (Done)
             </label>
           </div>
           <div class="action-group">
             <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
             <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
             <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
-            <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
-              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Request</option>
-              <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Driver Assigned</option>
-              <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Picked Up</option>
-              <option value="delivered" ${r.status === 'delivered' ? 'selected' : ''}>Dropped at Facility</option>
-              <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed (Done)</option>
-              <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-            </select>
           </div>
-        </div>`;
+        </div>
       container.appendChild(card);
     });
 
@@ -666,6 +661,17 @@
   }
   async function changeStatus(id, status) {
     try { await apiFetch(`/api/pickup-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load(); } catch (e) { alert(e.message); }
+  }
+    async function toggleProcessed(id, isChecked) {
+    if (!isChecked) {
+      alert("For security reasons, status cannot be reverted manually.");
+      await load(); // Revert the checkbox visually
+      return;
+    }
+    try { 
+      await apiFetch(`/api/pickup-requests/${id}/process`, { method: 'PATCH' }); 
+      await load(); 
+    } catch (e) { alert(e.message); }
   }
 
   function openAddWorker() {
