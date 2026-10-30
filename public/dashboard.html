@@ -710,19 +710,6 @@
             </select>
           </div>
         </div>
-          <div class="action-group">
-            <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
-            <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
-            <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
-            <select class="filter-select" style="min-width: 130px;" onchange="changeStatus('${r.id}', this.value)">
-              <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
-              <option value="assigned" ${r.status === 'assigned' ? 'selected' : ''}>Assigned</option>
-              <option value="collected" ${r.status === 'collected' ? 'selected' : ''}>Collected</option>
-              <option value="processed" ${r.status === 'processed' ? 'selected' : ''}>Processed</option>
-              <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-            </select>
-          </div>
-        </div>`;
       container.appendChild(card);
     });
 
