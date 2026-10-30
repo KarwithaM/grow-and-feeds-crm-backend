@@ -625,13 +625,13 @@
               Processed (Done)
             </label>
           </div>
-          <div class="action-group">
+        <div class="action-group">
             <select class="worker-select" data-id="${r.id}">${getWorkerOptions(r.worker_id)}</select>
             <button class="btn ${btnClass} btn-sm" onclick="assignWorker('${r.id}', this)">${btnText}</button>
             <button class="btn btn-outline btn-sm" onclick="autoAssign('${r.id}', this)">Auto</button>
           </div>
         </div>
-        ; // <-- ADDED MISSING BACKTICK AND SEMICOLON HERE
+      `; 
       container.appendChild(card);
     });
 
