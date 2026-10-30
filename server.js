@@ -302,21 +302,37 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           // --- PATRON & DRIVER CONVERSATIONAL FLOW ---
           let session = await getSession(from);
 
-          if (session.state === 'driver_waste_id') {
+                    if (session.state === 'driver_waste_id') {
             const wasteId = text.trim();
-            await supabase.from('pickup_requests').update({ waste_id: wasteId, delivered_to_facility: true, processed_at: new Date().toISOString() }).eq('id', session.request_id);
+            
+            // 1. Update Database
+            await supabase.from('pickup_requests').update({ 
+              waste_id: wasteId, 
+              delivered_to_facility: true, 
+              status: 'delivered', // Explicitly set status to delivered
+              processed_at: new Date().toISOString() 
+            }).eq('id', session.request_id);
+            
             await deleteSession(from);
             
-            const receivedMsg = `Great news! Your waste has been safely received at our facility and the Black Soldier Fly transformation has begun. 🏭\n\nThank you for growing more and feeding better!\n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
-            const { data: reqData } = await supabase.from('pickup_requests').select('patron_phone, patron_name').eq('id', session.request_id).single();
+            // 2. Fetch Patron Details
+            const { data: reqData } = await supabase.from('pickup_requests').select('patron_phone, patron_name, estimated_volume_kg, waste_type').eq('id', session.request_id).single();
+            
             if(reqData) {
-              await sendWhatsAppMessage(reqData.patron_phone, receivedMsg);
-              const week3Msg = `Update: It's been 3 weeks since your drop-off! The BSF larvae have been successfully harvested from your waste. They are now being processed into high-protein animal feed. \n\nThank you for supporting sustainable agriculture!\n\n💡 Fun Fact: BSF larvae are up to 40% protein, making them an excellent alternative to soy and fishmeal!`;
+              // 3. Send "Delivered" Message to Customer
+              const deliveredMsg = `Great news! Your waste (${reqData.estimated_volume_kg}kg of ${reqData.waste_type}) has been safely received at our facility and the Black Soldier Fly transformation has begun. 🏭\n\nThank you for growing more and feeding better!\n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
+              await sendWhatsAppMessage(reqData.patron_phone, deliveredMsg);
+
+              // 4. Send 3-Week and 7-Week Updates (Test Mode: Immediate)
+              const week3Msg = `Update: It's been 3 weeks since your drop-off! The BSF larvae have been successfully harvested from your waste. They are now being processed into high-protein animal feed. \n\n💡 Fun Fact: BSF larvae are up to 40% protein, making them an excellent alternative to soy and fishmeal!`;
               await sendWhatsAppMessage(reqData.patron_phone, week3Msg);
-              const week7Msg = `Final Update: It's been 7 weeks! Your waste has been fully transformed into rich organic fertilizer, ready to nourish our farms. \n\nThank you for helping us grow more and feed better!\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
+              
+              const week7Msg = `Final Update: It's been 7 weeks! Your waste has been fully transformed into rich organic fertilizer, ready to nourish our farms. 🌾\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
               await sendWhatsAppMessage(reqData.patron_phone, week7Msg);
             }
-            await sendWhatsAppMessage(from, `Waste ID ${wasteId} recorded successfully. Payment for your service has been initiated. Thank you for your hard work! `);
+
+            // 5. Confirm to Driver
+            await sendWhatsAppMessage(from, `Waste ID ${wasteId} recorded successfully. Payment for your service has been initiated. Thank you for your hard work!`);
             return res.status(200).send('EVENT_RECEIVED');
           }
 
