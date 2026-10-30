@@ -675,10 +675,25 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
-    console.log('🤖 Attempting AI generation with model: Qwen-Ambassador/Qwen3.7-Max');
-    console.log(' Data summary:', promptData);
+    // 🔍 DEBUG LOGGING FOR API KEY
+    const apiKey = process.env.QWEN_API_KEY ? process.env.QWEN_API_KEY.trim() : '';
+    console.log('🔑 API Key present:', !!apiKey);
+    console.log('🔑 API Key length:', apiKey.length);
+    console.log('🔑 API Key preview:', apiKey ? apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4) : 'NONE');
 
-    const qwenResponse = await qwenClient.chat.completions.create({
+    if (!apiKey) {
+      throw new Error('QWEN_API_KEY is missing from environment variables!');
+    }
+
+    // Re-initialize client with trimmed key to be absolutely safe
+    const debugQwenClient = new OpenAI({ 
+      baseURL: 'https://api-inference.modelscope.ai/v1', 
+      apiKey: apiKey 
+    });
+
+    console.log('🤖 Attempting AI generation with model: Qwen-Ambassador/Qwen3.7-Max');
+
+    const qwenResponse = await debugQwenClient.chat.completions.create({
       model: 'Qwen-Ambassador/Qwen3.7-Max',
       messages: [
         {
@@ -694,19 +709,15 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       max_tokens: 250
     });
 
-    console.log('✅ AI generation successful:', qwenResponse.choices[0].message.content.substring(0, 100) + '...');
+    console.log('✅ AI generation successful!');
     res.json({ report: qwenResponse.choices[0].message.content });
     
   } catch (error) {
-    // DETAILED ERROR LOGGING
     console.error('❌ AI REPORT FAILED - FULL DETAILS:');
     console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     if (error.response) {
-      console.error('API Response status:', error.response.status);
       console.error('API Response data:', JSON.stringify(error.response.data, null, 2));
     }
-    console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     
     res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
   }
