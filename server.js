@@ -51,7 +51,6 @@ function getVehicleCapacity(type) {
   return 0;
 }
 
-// Mock operational costs for the "Least Cost" algorithm
 function getVehicleCost(type) {
   if (type === 'handcart') return 500;
   if (type === 'pickup') return 1500;
@@ -72,7 +71,6 @@ function calculateMPesaCost(kg, distanceKm = 15) {
   return Math.ceil((kg * 0.5) + (distanceKm * baseRate));
 }
 
-// --- LEAST COST ALLOCATION ALGORITHM ---
 function getLeastCostAllocation(volume, availableWorkers) {
   const pools = {
     'handcart': availableWorkers.filter(w => w.vehicle_type === 'handcart'),
@@ -91,22 +89,17 @@ function getLeastCostAllocation(volume, availableWorkers) {
     }
   };
 
-  // 1. Single Vehicle Options
   if (volume <= 10000 && pools['trailer'].length >= 1) checkOption([{ type: 'trailer', drivers: [pools['trailer'][0]] }], getVehicleCost('trailer'));
   if (volume <= 4500 && pools['mini_truck'].length >= 1) checkOption([{ type: 'mini_truck', drivers: [pools['mini_truck'][0]] }], getVehicleCost('mini_truck'));
   if (volume <= 1000 && pools['pickup'].length >= 1) checkOption([{ type: 'pickup', drivers: [pools['pickup'][0]] }], getVehicleCost('pickup'));
   if (volume <= 500 && pools['handcart'].length >= 1) checkOption([{ type: 'handcart', drivers: [pools['handcart'][0]] }], getVehicleCost('handcart'));
 
-  // 2. Multi-Vehicle Options (Only if cheaper)
-  // 2 Pickups (Max 2000kg)
   if (volume <= 2000 && pools['pickup'].length >= 2) {
     checkOption([{ type: 'pickup', drivers: [pools['pickup'][0], pools['pickup'][1]] }], getVehicleCost('pickup') * 2);
   }
-  // 2 Handcarts (Max 1000kg)
   if (volume <= 1000 && pools['handcart'].length >= 2) {
     checkOption([{ type: 'handcart', drivers: [pools['handcart'][0], pools['handcart'][1]] }], getVehicleCost('handcart') * 2);
   }
-  // 1 Mini Truck + 1 Pickup (Max 5500kg)
   if (volume <= 5500 && pools['mini_truck'].length >= 1 && pools['pickup'].length >= 1) {
     checkOption([
       { type: 'mini_truck', drivers: [pools['mini_truck'][0]] },
@@ -233,21 +226,13 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
           if (actionRequestId) {
             const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
-              .select('id, status, worker_id, secondary_worker_id, patron_name, patron_phone, estimated_volume_kg, waste_type, field_workers!pickup_requests_worker_id_fkey(id, name, phone, vehicle_type, vehicle_plate)')
+              .select('id, status, worker_id, secondary_worker_id, patron_name, patron_phone, estimated_volume_kg, waste_type, pickup_location, field_workers!pickup_requests_worker_id_fkey(id, name, phone, vehicle_type, vehicle_plate)')
               .eq('id', actionRequestId)
               .maybeSingle();
             
             if (reqError || !request) return res.status(200).send('EVENT_RECEIVED');
 
-            // Check if sender is primary or secondary worker
-            const isPrimary = request.field_workers?.phone && normalizePhone(request.field_workers.phone) === from;
-            // Note: For secondary worker, we'd need a separate join or logic, simplified here to primary for MVP
-            
-            if (!isPrimary && request.secondary_worker_id) {
-               // Logic for secondary worker would go here. For MVP, we assume primary driver handles the flow.
-            }
-
-                        if (btnAction === 'accept') {
+            if (btnAction === 'accept') {
               await supabase.from('pickup_requests').update({
                 status: 'assigned', updated_at: new Date().toISOString(), assigned_at: new Date().toISOString()
               }).eq('id', actionRequestId);
@@ -257,23 +242,20 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
               await logPickupEvent(actionRequestId, 'assigned', `Driver confirmed pickup.`);
 
-              // --- FIX: Build dynamic team details ---
-              let teamDetails = ` Driver 1: ${request.field_workers.name}\n🚚 Vehicle: ${request.field_workers.vehicle_type} (${request.field_workers.vehicle_plate})\n`;
+              let teamDetails = `🚛 Driver 1: ${request.field_workers.name}\n Vehicle: ${request.field_workers.vehicle_type} (${request.field_workers.vehicle_plate})\n`;
 
               if (request.secondary_worker_id) {
-                  // Fetch secondary driver details from database
                   const { data: secondaryWorker } = await supabase
                       .from('field_workers')
                       .select('name, vehicle_type, vehicle_plate')
                       .eq('id', request.secondary_worker_id)
                       .single();
-
                   if (secondaryWorker) {
                       teamDetails += `\n🚛 Driver 2: ${secondaryWorker.name}\n🚚 Vehicle: ${secondaryWorker.vehicle_type} (${secondaryWorker.vehicle_plate})\n`;
                   }
               }
 
-              const customerMsg = `Great news! Your collection team is confirmed and on their way.\n\n${teamDetails}\n📍 Location: ${request.pickup_location}\n\nThey will contact you shortly to coordinate the pickup.\n\nThank you for growing more and feeding better! 🌱\n\n💡 Fun Fact: Black Soldier Fly larvae are completely harmless and don't bite or sting!`;
+              const customerMsg = `Great news! Your collection team is confirmed and on their way.\n\n${teamDetails}\n📍 Location: ${request.pickup_location}\n\nThey will contact you shortly to coordinate the pickup.\n\nThank you for growing more and feeding better! 🌱\n\n Fun Fact: Black Soldier Fly larvae are completely harmless and don't bite or sting!`;
               
               await sendWhatsAppMessage(request.patron_phone, customerMsg);
 
@@ -297,7 +279,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
                   status: 'collected', updated_at: new Date().toISOString(), collected_at: new Date().toISOString()
                 }).eq('id', actionRequestId);
                 
-                const customerMsg = `Thank you ${request.patron_name}! Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been successfully picked up. You are contributing to a cleaner Nairobi and supporting organic farming. We will notify you once it reaches our facility.\n\n💡 Fun Fact: BSF larvae can eat twice their body weight every single day!`;
+                const customerMsg = `Thank you ${request.patron_name}! Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been successfully picked up. You are contributing to a cleaner Nairobi and supporting organic farming. We will notify you once it reaches our facility.\n\n Fun Fact: BSF larvae can eat twice their body weight every single day!`;
                 await sendWhatsAppMessage(request.patron_phone, customerMsg);
 
                 await sendWhatsAppMessage(from, "Great job! Please enter the Waste ID Number issued at the facility drop-off gate:");
@@ -430,7 +412,7 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 function timestampForStatus(status) {
   if (status === 'assigned') return { assigned_at: new Date().toISOString() };
   if (status === 'collected') return { collected_at: new Date().toISOString() };
-  if (status === 'processed') return { processed_at: new Date().toISOString() };
+  if (status === 'processed' || status === 'delivered') return { processed_at: new Date().toISOString() };
   return {};
 }
 
@@ -478,7 +460,6 @@ app.post('/api/field-workers', requireDashboardKey, async (req, res) => {
 });
 
 app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, res) => {
-  // Manual assignment logic remains similar, but for MVP we focus on Auto-Assign for the multi-vehicle logic
   const { id } = req.params;
   const workerId = req.body?.worker_id;
   if (!workerId) return res.status(400).json({ error: 'worker_id is required' });
@@ -495,10 +476,9 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   if (worker.phone) {
     await sendWhatsAppButtons(normalizePhone(worker.phone), `NEW PICKUP ASSIGNED\n\nPatron: ${request.patron_name}\nLocation: ${request.pickup_location}\nVolume: ${request.estimated_volume_kg} kg\n\nPlease confirm:`, [{ id: 'accept', title: 'Confirm' }, { id: 'decline', title: 'Decline' }], id);
   }
-  res.json({ success: true });
+  res.json({ success: true, worker: worker.name });
 });
 
-// --- SMART AUTO-ASSIGN WITH LEAST COST LOGIC ---
 app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
 
@@ -509,25 +489,21 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   const { data: availableWorkers, error: workerError } = await supabase.from('field_workers').select('*').eq('status', 'available');
   if (workerError) return res.status(500).json({ error: workerError.message });
 
-  // 1. Find the cheapest combination of vehicles
   const allocation = getLeastCostAllocation(request.estimated_volume_kg, availableWorkers);
 
   if (!allocation) {
     return res.status(400).json({ error: 'No available vehicles can handle this load.' });
   }
 
-  // 2. Extract drivers from the allocation
   const primaryDriver = allocation.vehicles[0].drivers[0];
   const secondaryDriver = allocation.vehicles.length > 1 && allocation.vehicles[0].drivers.length > 1 ? allocation.vehicles[0].drivers[1] : null;
   
-  // Handle mixed vehicle types (e.g. 1 Mini + 1 Pickup)
   let secondaryDriverMixed = null;
   if (allocation.vehicles.length > 1) {
       secondaryDriverMixed = allocation.vehicles[1].drivers[0];
   }
   const finalSecondary = secondaryDriver || secondaryDriverMixed;
 
-  // 3. Update Database
   const updateData = {
     worker_id: primaryDriver.id,
     status: 'assigned',
@@ -542,17 +518,14 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
 
   await logPickupEvent(id, 'assigned', `Auto-assigned via Least Cost Logic. Cost: ${allocation.cost}. Drivers: ${primaryDriver.name}${finalSecondary ? ', ' + finalSecondary.name : ''}`);
 
-  // 4. Send WhatsApp to Primary Driver
   if (primaryDriver.phone) {
     await sendWhatsAppButtons(normalizePhone(primaryDriver.phone), `NEW PICKUP ASSIGNED (Least Cost Option)\n\nPatron: ${request.patron_name}\nLocation: ${request.pickup_location}\nVolume: ${request.estimated_volume_kg} kg\n\nPlease confirm:`, [{ id: 'accept', title: 'Confirm' }, { id: 'decline', title: 'Decline' }], id);
   }
 
-  // 5. Send WhatsApp to Secondary Driver (if exists)
   if (finalSecondary && finalSecondary.phone) {
     await sendWhatsAppMessage(normalizePhone(finalSecondary.phone), `NEW PICKUP ASSIGNED (Support Vehicle)\n\nPatron: ${request.patron_name}\nLocation: ${request.pickup_location}\nVolume: ${request.estimated_volume_kg} kg\n\nPlease proceed to the location. Your partner driver will coordinate with you.`);
   }
 
-  // 6. Notify Patron
   if (request.patron_phone) {
     let vehicleDesc = primaryDriver.vehicle_type;
     if (finalSecondary) vehicleDesc += ` + ${finalSecondary.vehicle_type}`;
@@ -561,12 +534,111 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
     await sendWhatsAppMessage(request.patron_phone, patronMessage);
   }
 
-  res.json({ success: true, allocation });
+  res.json({ success: true, worker: primaryDriver.name, allocation });
+});
+
+// NEW: Handle status changes from dashboard dropdown
+app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  const allowed = ['pending', 'assigned', 'collected', 'delivered', 'processed', 'cancelled'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+  }
+
+  const updateData = { status, updated_at: new Date().toISOString() };
+  
+  if (status === 'delivered') {
+    updateData.delivered_to_facility = true;
+    updateData.processed_at = new Date().toISOString();
+  }
+  if (status === 'collected') {
+    updateData.collected_at = new Date().toISOString();
+  }
+
+  const { data: request } = await supabase
+    .from('pickup_requests')
+    .select('patron_phone, patron_name, estimated_volume_kg, waste_type')
+    .eq('id', id)
+    .single();
+
+  await supabase.from('pickup_requests').update(updateData).eq('id', id);
+
+  if (request && request.patron_phone) {
+    let msg = '';
+    if (status === 'collected') {
+      msg = `Thank you ${request.patron_name}! Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been successfully picked up. You are contributing to a cleaner Nairobi! 🌱\n\n💡 Fun Fact: BSF larvae can eat twice their body weight every single day!`;
+    } else if (status === 'delivered') {
+      msg = `Great news! Your waste has been safely received at our facility and the Black Soldier Fly transformation has begun. \n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
+    } else if (status === 'processed') {
+      msg = `Final Update: Your waste has been fully transformed into rich BSF Frass (organic fertilizer) and high-protein Larvae (animal feed)! 🌾\n\nThank you for helping us grow more and feed better!\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
+    }
+    
+    if (msg) await sendWhatsAppMessage(request.patron_phone, msg);
+  }
+
+  res.json({ success: true });
 });
 
 app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
-  // ... (Keep existing report logic) ...
-  res.json({ report: "Report generation logic here." });
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+
+    const { data, error } = await supabase
+      .from('pickup_requests')
+      .select('estimated_volume_kg, waste_type, pickup_location, status')
+      .in('status', ['collected', 'processed', 'delivered'])
+      .gte('created_at', isoSevenDaysAgo);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    if (!data || data.length === 0) {
+      return res.json({ report: "No completed pickups found in the last 7 days. Keep up the great outreach to local farmers and vendors!" });
+    }
+
+    const totalKg = data.reduce((sum, row) => sum + (row.estimated_volume_kg || 0), 0);
+    const wasteTypes = {};
+    const locations = {};
+    
+    data.forEach(row => {
+      wasteTypes[row.waste_type] = (wasteTypes[row.waste_type] || 0) + (row.estimated_volume_kg || 0);
+      locations[row.pickup_location] = (locations[row.pickup_location] || 0) + 1;
+    });
+
+    const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
+    const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
+
+    const promptData = `
+      Total completed pickups: ${data.length}
+      Total weight diverted: ${totalKg} kg
+      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+      Most active location: ${topLocation} (${locations[topLocation]} pickups)
+    `;
+
+    const qwenResponse = await qwenClient.chat.completions.create({
+      model: 'Qwen-Ambassador/Qwen3.7-Max',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
+        },
+        {
+          role: 'user',
+          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+
+    res.json({ report: qwenResponse.choices[0].message.content });
+  } catch (error) {
+    console.error('AI Report Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate AI report' });
+  }
 });
 
 app.patch('/api/pickup-requests/:id/update', requireDashboardKey, async (req, res) => {
