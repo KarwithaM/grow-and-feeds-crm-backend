@@ -42,7 +42,6 @@ function capitalizeName(name) {
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
 
-// --- VEHICLE LOGIC ---
 function getVehicleCapacity(type) {
   if (type === 'handcart') return 500;
   if (type === 'pickup') return 1000;
@@ -222,7 +221,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
 
           if (!from || (!text && !actionRequestId)) continue;
 
-          // --- DRIVER ACTIONS ---
           if (actionRequestId) {
             const { data: request, error: reqError } = await supabase
               .from('pickup_requests')
@@ -299,31 +297,25 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
             }
           }
 
-          // --- PATRON & DRIVER CONVERSATIONAL FLOW ---
           let session = await getSession(from);
 
-                    if (session.state === 'driver_waste_id') {
+          if (session.state === 'driver_waste_id') {
             const wasteId = text.trim();
-            
-            // 1. Update Database
             await supabase.from('pickup_requests').update({ 
               waste_id: wasteId, 
               delivered_to_facility: true, 
-              status: 'delivered', // Explicitly set status to delivered
+              status: 'delivered',
               processed_at: new Date().toISOString() 
             }).eq('id', session.request_id);
             
             await deleteSession(from);
             
-            // 2. Fetch Patron Details
             const { data: reqData } = await supabase.from('pickup_requests').select('patron_phone, patron_name, estimated_volume_kg, waste_type').eq('id', session.request_id).single();
             
             if(reqData) {
-              // 3. Send "Delivered" Message to Customer
               const deliveredMsg = `Great news! Your waste (${reqData.estimated_volume_kg}kg of ${reqData.waste_type}) has been safely received at our facility and the Black Soldier Fly transformation has begun. 🏭\n\nThank you for growing more and feeding better!\n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
               await sendWhatsAppMessage(reqData.patron_phone, deliveredMsg);
 
-              // 4. Send 3-Week and 7-Week Updates (Test Mode: Immediate)
               const week3Msg = `Update: It's been 3 weeks since your drop-off! The BSF larvae have been successfully harvested from your waste. They are now being processed into high-protein animal feed. \n\n💡 Fun Fact: BSF larvae are up to 40% protein, making them an excellent alternative to soy and fishmeal!`;
               await sendWhatsAppMessage(reqData.patron_phone, week3Msg);
               
@@ -331,7 +323,6 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
               await sendWhatsAppMessage(reqData.patron_phone, week7Msg);
             }
 
-            // 5. Confirm to Driver
             await sendWhatsAppMessage(from, `Waste ID ${wasteId} recorded successfully. Payment for your service has been initiated. Thank you for your hard work!`);
             return res.status(200).send('EVENT_RECEIVED');
           }
@@ -441,7 +432,7 @@ const qwenClient = new OpenAI({ baseURL: 'https://api-inference.modelscope.ai/v1
 async function getAIResponse(userMessage) {
   try {
     const response = await qwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max',
+      model: 'Qwen/Qwen2.5-72B-Instruct',
       messages: [{ role: 'system', content: 'You are a helpful assistant for Grow and Feeds Patrons.' }, { role: 'user', content: userMessage }],
       temperature: 0.7, max_tokens: 150
     });
@@ -483,7 +474,6 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   const { data: worker, error: workerError } = await supabase.from('field_workers').select('id, name, phone, status, vehicle_type, vehicle_plate').eq('id', workerId).maybeSingle();
   if (workerError || !worker) return res.status(500).json({ error: 'Worker not found' });
 
-  // Fetch current request to check for existing drivers
   const { data: request, error: reqError } = await supabase.from('pickup_requests').select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, worker_id, secondary_worker_id').eq('id', id).maybeSingle();
   if (reqError || !request) return res.status(404).json({ error: 'Request not found' });
 
@@ -497,7 +487,7 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
 
   await supabase.from('pickup_requests').update({ 
     worker_id: workerId, 
-    secondary_worker_id: null, // Clear secondary on manual reassign
+    secondary_worker_id: null, 
     status: 'assigned', 
     updated_at: new Date().toISOString() 
   }).eq('id', id);
@@ -568,7 +558,6 @@ app.post('/api/pickup-requests/:id/auto-assign', requireDashboardKey, async (req
   res.json({ success: true, worker: primaryDriver.name, allocation });
 });
 
-// NEW: Handle status changes from dashboard dropdown
 app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -578,7 +567,6 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
     return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
   }
 
-  // Fetch current request to get worker IDs before updating
   const { data: currentRequest } = await supabase
     .from('pickup_requests')
     .select('worker_id, secondary_worker_id, patron_phone, patron_name, estimated_volume_kg, waste_type')
@@ -587,7 +575,6 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
 
   const updateData = { status, updated_at: new Date().toISOString() };
   
-  // FREE DRIVERS when job is delivered, processed, or cancelled
   if (status === 'delivered' || status === 'processed' || status === 'cancelled') {
     updateData.delivered_to_facility = (status === 'delivered' || status === 'processed');
     updateData.processed_at = new Date().toISOString();
@@ -626,24 +613,20 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
   res.json({ success: true });
 });
 
-// Handle manual "Processed (Done)" checkbox from dashboard
 app.patch('/api/pickup-requests/:id/process', requireDashboardKey, async (req, res) => {
   const { id } = req.params;
 
-  // Fetch details for WhatsApp notification
   const { data: request } = await supabase
     .from('pickup_requests')
     .select('patron_phone, patron_name, estimated_volume_kg, waste_type')
     .eq('id', id)
     .single();
 
-  // Update status to processed
   await supabase.from('pickup_requests').update({ 
     status: 'processed', 
     updated_at: new Date().toISOString() 
   }).eq('id', id);
 
-  // Send final transformation message to customer
   if (request && request.patron_phone) {
     const msg = `Final Update: Your waste has been fully transformed into rich BSF Frass (organic fertilizer) and high-protein Larvae (animal feed)! 🌾\n\nThank you for helping us grow more and feed better!\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
     await sendWhatsAppMessage(request.patron_phone, msg);
@@ -689,9 +672,8 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       Most active location: ${topLocation} (${locations[topLocation]} pickups)
     `;
 
-    // Updated to the standard, reliable ModelScope model
     const qwenResponse = await qwenClient.chat.completions.create({
-      model: 'Qwen/Qwen2.5-72B-Instruct', 
+      model: 'Qwen/Qwen2.5-72B-Instruct',
       messages: [
         {
           role: 'system',
@@ -709,41 +691,7 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     res.json({ report: qwenResponse.choices[0].message.content });
   } catch (error) {
     console.error('AI Report Generation Error:', error);
-    // Graceful fallback so the button never shows a raw error to the user
     res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
-  }
-});
-
-    const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
-    const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
-
-    const promptData = `
-      Total completed pickups: ${data.length}
-      Total weight diverted: ${totalKg} kg
-      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
-      Most active location: ${topLocation} (${locations[topLocation]} pickups)
-    `;
-
-    const qwenResponse = await qwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
-        },
-        {
-          role: 'user',
-          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 250
-    });
-
-    res.json({ report: qwenResponse.choices[0].message.content });
-  } catch (error) {
-    console.error('AI Report Generation Error:', error);
-    res.status(500).json({ error: 'Failed to generate AI report' });
   }
 });
 
