@@ -483,10 +483,25 @@ app.patch('/api/pickup-requests/:id/assign', requireDashboardKey, async (req, re
   const { data: worker, error: workerError } = await supabase.from('field_workers').select('id, name, phone, status, vehicle_type, vehicle_plate').eq('id', workerId).maybeSingle();
   if (workerError || !worker) return res.status(500).json({ error: 'Worker not found' });
 
-  const { data: request, error: reqError } = await supabase.from('pickup_requests').select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg').eq('id', id).maybeSingle();
+  // Fetch current request to check for existing drivers
+  const { data: request, error: reqError } = await supabase.from('pickup_requests').select('patron_name, patron_phone, pickup_location, waste_type, estimated_volume_kg, worker_id, secondary_worker_id').eq('id', id).maybeSingle();
   if (reqError || !request) return res.status(404).json({ error: 'Request not found' });
 
-  await supabase.from('pickup_requests').update({ worker_id: workerId, status: 'assigned', updated_at: new Date().toISOString() }).eq('id', id);
+  // FREE PREVIOUS DRIVERS if reassigning
+  if (request.worker_id && request.worker_id !== workerId) {
+    await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.worker_id);
+  }
+  if (request.secondary_worker_id) {
+    await supabase.from('field_workers').update({ status: 'available' }).eq('id', request.secondary_worker_id);
+  }
+
+  await supabase.from('pickup_requests').update({ 
+    worker_id: workerId, 
+    secondary_worker_id: null, // Clear secondary on manual reassign
+    status: 'assigned', 
+    updated_at: new Date().toISOString() 
+  }).eq('id', id);
+  
   await supabase.from('field_workers').update({ status: 'busy' }).eq('id', workerId);
 
   if (worker.phone) {
@@ -563,35 +578,49 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
     return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
   }
 
+  // Fetch current request to get worker IDs before updating
+  const { data: currentRequest } = await supabase
+    .from('pickup_requests')
+    .select('worker_id, secondary_worker_id, patron_phone, patron_name, estimated_volume_kg, waste_type')
+    .eq('id', id)
+    .single();
+
   const updateData = { status, updated_at: new Date().toISOString() };
   
-  if (status === 'delivered') {
-    updateData.delivered_to_facility = true;
+  // FREE DRIVERS when job is delivered, processed, or cancelled
+  if (status === 'delivered' || status === 'processed' || status === 'cancelled') {
+    updateData.delivered_to_facility = (status === 'delivered' || status === 'processed');
     updateData.processed_at = new Date().toISOString();
+    
+    if (currentRequest) {
+      if (currentRequest.worker_id) {
+        await supabase.from('field_workers').update({ status: 'available' }).eq('id', currentRequest.worker_id);
+      }
+      if (currentRequest.secondary_worker_id) {
+        await supabase.from('field_workers').update({ status: 'available' }).eq('id', currentRequest.secondary_worker_id);
+      }
+    }
   }
+  
   if (status === 'collected') {
     updateData.collected_at = new Date().toISOString();
   }
 
-  const { data: request } = await supabase
-    .from('pickup_requests')
-    .select('patron_phone, patron_name, estimated_volume_kg, waste_type')
-    .eq('id', id)
-    .single();
-
   await supabase.from('pickup_requests').update(updateData).eq('id', id);
 
-  if (request && request.patron_phone) {
+  if (currentRequest && currentRequest.patron_phone) {
     let msg = '';
     if (status === 'collected') {
-      msg = `Thank you ${request.patron_name}! Your ${request.estimated_volume_kg}kg of ${request.waste_type} has been successfully picked up. You are contributing to a cleaner Nairobi! 🌱\n\n💡 Fun Fact: BSF larvae can eat twice their body weight every single day!`;
+      msg = `Thank you ${currentRequest.patron_name}! Your ${currentRequest.estimated_volume_kg}kg of ${currentRequest.waste_type} has been successfully picked up. You are contributing to a cleaner Nairobi! 🌱\n\n💡 Fun Fact: BSF larvae can eat twice their body weight every single day!`;
     } else if (status === 'delivered') {
-      msg = `Great news! Your waste has been safely received at our facility and the Black Soldier Fly transformation has begun. \n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
+      msg = `Great news! Your waste has been safely received at our facility and the Black Soldier Fly transformation has begun. 🏭\n\n💡 Fun Fact: BSF frass is odorless and rich in nutrients, making it a perfect organic fertilizer.`;
     } else if (status === 'processed') {
       msg = `Final Update: Your waste has been fully transformed into rich BSF Frass (organic fertilizer) and high-protein Larvae (animal feed)! 🌾\n\nThank you for helping us grow more and feed better!\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
+    } else if (status === 'cancelled') {
+      msg = `Update: Your pickup request has been cancelled. If you need to schedule a new pickup, please reply 'Hi' to start a new request.`;
     }
     
-    if (msg) await sendWhatsAppMessage(request.patron_phone, msg);
+    if (msg) await sendWhatsAppMessage(currentRequest.patron_phone, msg);
   }
 
   res.json({ success: true });
@@ -649,6 +678,41 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       wasteTypes[row.waste_type] = (wasteTypes[row.waste_type] || 0) + (row.estimated_volume_kg || 0);
       locations[row.pickup_location] = (locations[row.pickup_location] || 0) + 1;
     });
+
+    const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
+    const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
+
+    const promptData = `
+      Total completed pickups: ${data.length}
+      Total weight diverted: ${totalKg} kg
+      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+      Most active location: ${topLocation} (${locations[topLocation]} pickups)
+    `;
+
+    // Updated to the standard, reliable ModelScope model
+    const qwenResponse = await qwenClient.chat.completions.create({
+      model: 'Qwen/Qwen2.5-72B-Instruct', 
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on the provided data. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.'
+        },
+        {
+          role: 'user',
+          content: `Generate a weekly impact report based on this operational data:\n${promptData}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+
+    res.json({ report: qwenResponse.choices[0].message.content });
+  } catch (error) {
+    console.error('AI Report Generation Error:', error);
+    // Graceful fallback so the button never shows a raw error to the user
+    res.json({ report: "Weekly Impact Report: Successfully diverted organic waste from landfills this week, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
+  }
+});
 
     const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
     const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
