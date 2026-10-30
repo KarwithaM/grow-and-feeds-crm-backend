@@ -678,16 +678,29 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     // FREE AI GENERATION (No API Key Required)
     const fullPrompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
 
-    console.log('🤖 Generating free AI report via Pollinations.ai...');
+    console.log('🤖 Generating free AI report via Pollinations.ai (POST)...');
     
-    // Use query parameter format for better handling of long prompts
-    const encodedPrompt = encodeURIComponent(fullPrompt);
-    const aiResponse = await fetch(`https://text.pollinations.ai/?prompt=${encodedPrompt}&model=mistral&seed=42`);
-    
+    // ✅ CORRECT: Use POST with a messages array as per Pollinations API docs
+    const aiResponse = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: fullPrompt }
+        ],
+        model: 'mistral', // Reliable free model
+        seed: 42
+      })
+    });
+
     if (!aiResponse.ok) {
       throw new Error(`Free AI API failed with status ${aiResponse.status}`);
     }
     
+    // Pollinations POST endpoint returns the plain text answer directly
     const reportText = await aiResponse.text();
     console.log('✅ Free AI report generated successfully!');
     
