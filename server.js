@@ -432,12 +432,15 @@ const qwenClient = new OpenAI({ baseURL: 'https://api-inference.modelscope.ai/v1
 async function getAIResponse(userMessage) {
   try {
     const response = await qwenClient.chat.completions.create({
-      model: 'Qwen/Qwen2.5-72B-Instruct',
+      model: 'Qwen-Ambassador/Qwen3.7-Max', // <-- Ensure this matches your allowed list
       messages: [{ role: 'system', content: 'You are a helpful assistant for Grow and Feeds Patrons.' }, { role: 'user', content: userMessage }],
       temperature: 0.7, max_tokens: 150
     });
     return response.choices[0].message.content;
-  } catch (error) { return null; }
+  } catch (error) { 
+    console.error('AI Response Error:', error); 
+    return null; 
+  }
 }
 
 // ===== DASHBOARD API ENDPOINTS =====
