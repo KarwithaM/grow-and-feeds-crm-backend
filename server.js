@@ -597,6 +597,32 @@ app.patch('/api/pickup-requests/:id/status', requireDashboardKey, async (req, re
   res.json({ success: true });
 });
 
+// Handle manual "Processed (Done)" checkbox from dashboard
+app.patch('/api/pickup-requests/:id/process', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+
+  // Fetch details for WhatsApp notification
+  const { data: request } = await supabase
+    .from('pickup_requests')
+    .select('patron_phone, patron_name, estimated_volume_kg, waste_type')
+    .eq('id', id)
+    .single();
+
+  // Update status to processed
+  await supabase.from('pickup_requests').update({ 
+    status: 'processed', 
+    updated_at: new Date().toISOString() 
+  }).eq('id', id);
+
+  // Send final transformation message to customer
+  if (request && request.patron_phone) {
+    const msg = `Final Update: Your waste has been fully transformed into rich BSF Frass (organic fertilizer) and high-protein Larvae (animal feed)! 🌾\n\nThank you for helping us grow more and feed better!\n\n💡 Fun Fact: One ton of BSF frass can fertilize up to 5 acres of land!`;
+    await sendWhatsAppMessage(request.patron_phone, msg);
+  }
+
+  res.json({ success: true });
+});
+
 app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
   try {
     const sevenDaysAgo = new Date();
