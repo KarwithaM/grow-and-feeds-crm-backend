@@ -644,9 +644,6 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
     const isoStartDate = startDate.toISOString();
 
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const periodText = days === 7 ? "This week" : `Over the last ${days} days`;
-
     const { data, error } = await supabase
       .from('pickup_requests')
       .select('estimated_volume_kg, waste_type, pickup_location, status')
@@ -671,44 +668,39 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     const topLocation = Object.keys(locations).reduce((a, b) => locations[a] > locations[b] ? a : b);
     const topWaste = Object.keys(wasteTypes).reduce((a, b) => wasteTypes[a] > wasteTypes[b] ? a : b);
 
-    const promptData = `
-      Period: ${periodText} (ending ${today})
-      Total completed pickups: ${data.length}
-      Total weight diverted: ${totalKg} kg
-      Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
-      Most active location: ${topLocation} (${locations[topLocation]} pickups)
-    `;
-
-    console.log(`🤖 Generating AI report for the last ${days} days...`);
+    const prompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. 
+    Write a short, inspiring, professional impact report (under 150 words) based on this data:
+    - Period: Last ${days} days
+    - Total completed pickups: ${data.length}
+    - Total weight diverted: ${totalKg} kg
+    - Top waste type: ${topWaste} (${wasteTypes[topWaste]} kg)
+    - Most active location: ${topLocation} (${locations[topLocation]} pickups)
     
-    const qwenResponse = await qwenClient.chat.completions.create({
-      model: 'Qwen-Ambassador/Qwen3.7-Max',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. 
-          Write a short, inspiring, professional impact report (under 150 words) based on the provided data. 
-          Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). 
-          Use a professional, encouraging tone. 
-          CRITICAL: Do NOT use any markdown formatting like ** or #. Output plain text only.`
-        },
-        {
-          role: 'user',
-          content: `Generate a ${periodText.toLowerCase()} impact report based on this operational data:\n${promptData}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 250
+    Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
+
+    console.log(`🤖 Generating AI report via Pollinations AI for the last ${days} days...`);
+    
+    // ✅ NEW: Use Pollinations AI (Free, no API key required, as per your uploaded docs)
+    const aiResponse = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        model: 'openai' 
+      })
     });
 
-    let reportText = qwenResponse.choices[0].message.content;
-    reportText = reportText.replace(/\*\*/g, '').replace(/^#\s+/gm, '');
-    
+    if (!aiResponse.ok) {
+      throw new Error(`Pollinations AI failed with status ${aiResponse.status}`);
+    }
+
+    const reportText = await aiResponse.text();
     console.log('✅ AI report generated successfully!');
     res.json({ report: reportText });
     
   } catch (error) {
-    console.error('❌ AI REPORT FAILED:', error.message);
+    // This will now print the exact error to your Render logs if it fails
+    console.error('❌ AI REPORT FAILED:', error.message, error.stack);
     res.json({ report: "Impact Report: Successfully diverted organic waste from landfills, supporting circular agriculture and reducing methane emissions. (Note: AI generation experienced a temporary issue, but your operational data is securely logged!)" });
   }
 });
