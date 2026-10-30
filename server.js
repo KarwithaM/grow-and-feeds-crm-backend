@@ -678,21 +678,26 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
     // FREE AI GENERATION (No API Key Required)
     const fullPrompt = `You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed. Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.`;
 
-    console.log('🤖 Generating free AI report via Pollinations.ai (POST)...');
+    console.log('🤖 Generating free AI report via Pollinations.ai (OpenAI-compatible)...');
     
-    // ✅ CORRECT: Use POST with a messages array as per Pollinations API docs
-    const aiResponse = await fetch('https://text.pollinations.ai/', {
+    // ✅ CORRECT: Use the /openai endpoint for {"messages": [...]} payloads
+    const aiResponse = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        model: 'openai', // Uses the default available model (e.g., GPT-OSS 20B)
         messages: [
-          { role: 'system', content: 'You are a helpful AI assistant.' },
-          { role: 'user', content: fullPrompt }
-        ],
-        model: 'mistral', // Reliable free model
-        seed: 42
+          { 
+            role: 'system', 
+            content: 'You are an operational analyst for Grow and Feeds Patrons, a Kenyan agribusiness converting organic waste into Black Soldier Fly (BSF) fertilizer and animal feed.' 
+          },
+          { 
+            role: 'user', 
+            content: `Write a short, inspiring, professional weekly impact report (under 150 words) based on this data: ${promptData}. Highlight the environmental impact (e.g., diverting waste from landfills, reducing methane emissions, supporting circular agriculture). Use a professional, encouraging tone.` 
+          }
+        ]
       })
     });
 
@@ -700,10 +705,11 @@ app.get('/api/reports/weekly-impact', requireDashboardKey, async (req, res) => {
       throw new Error(`Free AI API failed with status ${aiResponse.status}`);
     }
     
-    // Pollinations POST endpoint returns the plain text answer directly
-    const reportText = await aiResponse.text();
-    console.log('✅ Free AI report generated successfully!');
+    // Parse the OpenAI-compatible JSON response
+    const data = await aiResponse.json();
+    const reportText = data.choices[0].message.content;
     
+    console.log('✅ Free AI report generated successfully!');
     res.json({ report: reportText });
     
   } catch (error) {
