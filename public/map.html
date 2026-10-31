@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Live Map - Grow And Feeds Patrons</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --primary: #0F3D3A; --primary-light: #1A5C57; --secondary: #F4B13B;
+    --bg: #F2E6D6; --card-bg: #FFFFFF; --text-main: #223300; --text-muted: #6B7280; --border: #E5E7EB;
+    --sidebar-bg: #0F3D3A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { width: 80px; min-width: 80px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px 0; transition: all 0.3s ease; flex-shrink: 0; z-index: 1000; }
+  .sidebar.expanded { width: 260px; min-width: 260px; align-items: flex-start; padding: 20px 24px; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; justify-content: center; }
+  .sidebar.expanded .sidebar-header { justify-content: flex-start; }
+  .sidebar-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+  .sidebar-header h2 { font-size: 15px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sidebar.expanded .sidebar-header h2 { opacity: 1; }
+  .nav-item { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: rgba(255,255,255,0.7); text-decoration: none; transition: all 0.2s; }
+  .sidebar.expanded .nav-item { justify-content: flex-start; padding: 12px 16px; }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+  .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none; }
+  .sidebar.expanded .nav-text { opacity: 1; display: inline; }
+  .sidebar-toggle { margin-top: auto; padding: 12px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; color: rgba(255,255,255,0.7); border-top: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-toggle svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 0.3s; }
+  .sidebar.expanded .sidebar-toggle svg { transform: rotate(180deg); }
+
+  /* MAP CONTAINER */
+  .main-content { flex: 1; position: relative; }
+  #map { width: 100%; height: 100%; z-index: 1; }
+
+  /* FLOATING OVERLAYS */
+  .overlay-panel {
+    position: absolute; background: var(--card-bg); border-radius: 12px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 500; padding: 16px;
+  }
+  .stats-panel { top: 20px; right: 20px; width: 280px; }
+  .stats-panel h3 { font-size: 14px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-value { font-size: 20px; font-weight: 800; color: var(--primary); }
+  .stat-label { font-size: 13px; color: var(--text-muted); }
+
+  .filters-panel { bottom: 20px; right: 20px; display: flex; gap: 10px; }
+  .filter-btn {
+    padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); background: #fff;
+    font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: all 0.2s;
+  }
+  .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-driver { background: #3B82F6; }
+  .dot-pickup { background: var(--secondary); }
+  .dot-facility { background: #EF4444; }
+
+  /* CUSTOM MARKERS */
+  .custom-marker { background: transparent !important; border: none !important; }
+  .marker-icon { font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="logo.png" alt="Logo">
+    <h2>Grow And Feeds<br>Patrons</h2>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span class="nav-text">Dashboard</span>
+  </a>
+  <a href="map.html" class="nav-item active">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span class="nav-text">Live Map</span>
+  </a>
+  <a href="workers.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="nav-text">Delivery Workers</span>
+  </a>
+  <a href="inventory.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    <span class="nav-text">Inventory</span>
+  </a>
+  <a href="reports.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="nav-text">Reports</span>
+  </a>
+  <div class="sidebar-toggle" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </div>
+</aside>
+
+<main class="main-content">
+  <div id="map"></div>
+
+  <!-- Stats Overlay -->
+  <div class="overlay-panel stats-panel">
+    <h3>Live Operations</h3>
+    <div class="stat-row">
+      <span class="stat-label">Active Drivers</span>
+      <span class="stat-value" id="stat-drivers">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Pending Pickups</span>
+      <span class="stat-value" id="stat-pickups">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Volume in Transit</span>
+      <span class="stat-value" id="stat-kg">0 kg</span>
+    </div>
+    <div class="stat-row" style="margin-top: 8px; font-size: 11px; color: #10B981;">
+      <span>● System Live</span>
+      <span id="last-update">Updating...</span>
+    </div>
+  </div>
+
+  <!-- Filters Overlay -->
+  <div class="overlay-panel filters-panel">
+    <button class="filter-btn active" onclick="toggleLayer('drivers', this)">
+      <span class="dot dot-driver"></span> Drivers
+    </button>
+    <button class="filter-btn active" onclick="toggleLayer('pickups', this)">
+      <span class="dot dot-pickup"></span> Pickups
+    </button>
+    <button class="filter-btn active" onclick="toggleLayer('facilities', this)">
+      <span class="dot dot-facility"></span> Facilities
+    </button>
+  </div>
+</main>
+
+<script>
+  const API_KEY = localStorage.getItem('gf_key');
+  let map, layers = { drivers: [], pickups: [], facilities: [] };
+  let filters = { drivers: true, pickups: true, facilities: true };
+
+  // Nairobi Zones Dictionary (for geocoding locations)
+  const nairobiZones = {
+    'city park market': { lat: -1.2700, lng: 36.8200 }, 'korogocho': { lat: -1.2571, lng: 36.8856 },
+    'ngara': { lat: -1.2750, lng: 36.8400 }, 'githurai': { lat: -1.2100, lng: 36.8900 },
+    'industrial area': { lat: -1.3100, lng: 36.8300 }, 'syokimau': { lat: -1.3600, lng: 36.9200 },
+    'westlands': { lat: -1.2650, lng: 36.8050 }, 'eastleigh': { lat: -1.2700, lng: 36.8500 },
+    'kilimani': { lat: -1.2950, lng: 36.7800 }, 'kileleshwa': { lat: -1.2850, lng: 36.7700 },
+    'kibera': { lat: -1.3100, lng: 36.7800 }, 'kasarani': { lat: -1.2200, lng: 36.9000 },
+    'langata': { lat: -1.3500, lng: 36.7500 }, 'karen': { lat: -1.3600, lng: 36.7000 },
+    'buruburu': { lat: -1.2800, lng: 36.8800 }, 'embakasi': { lat: -1.3200, lng: 36.9200 },
+    'kawangware': { lat: -1.2900, lng: 36.7300 }, 'mutuini': { lat: -1.2700, lng: 36.7200 },
+    'nairobi west': { lat: -1.3100, lng: 36.8050 }, 'ngong road': { lat: -1.3100, lng: 36.7800 }
+  };
+
+  const facilities = [
+    { name: 'Korogocho BSF Hub', key: 'korogocho' },
+    { name: 'City Park BSF Hub', key: 'city park market' },
+    { name: 'Kibera BSF Hub', key: 'kibera' }
+  ];
+
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); setTimeout(() => map.invalidateSize(), 300); }
+
+  function initMap() {
+    map = L.map('map', { zoomControl: false }).setView([-1.286389, 36.817223], 12);
+    L.control.zoom({ position: 'topleft' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap', maxZoom: 18
+    }).addTo(map);
+    loadMapData();
+    setInterval(loadMapData, 30000); // Auto-refresh every 30s
+  }
+
+  function createIcon(emoji, size = 32) {
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="marker-icon" style="font-size:${size}px;">${emoji}</div>`,
+      iconSize: [size, size], iconAnchor: [size/2, size/2]
+    });
+  }
+
+  function findZone(locationStr) {
+    if (!locationStr) return null;
+    const lower = locationStr.toLowerCase();
+    return Object.keys(nairobiZones).find(z => lower.includes(z));
+  }
+
+  async function loadMapData() {
+    try {
+      const res = await fetch('/api/map/data', { headers: { 'x-api-key': API_KEY } });
+      const data = await res.json();
+      renderMap(data);
+      document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+    } catch (e) { console.error(e); }
+  }
+
+  function renderMap(data) {
+    // Clear existing layers
+    Object.values(layers).forEach(arr => arr.forEach(m => map.removeLayer(m)));
+    layers = { drivers: [], pickups: [], facilities: [] };
+
+    // 1. Facilities
+    facilities.forEach(f => {
+      const zone = nairobiZones[f.key];
+      if (zone) {
+        const marker = L.marker([zone.lat, zone.lng], { icon: createIcon('🏭', 36) })
+          .bindPopup(`<b>${f.name}</b><br>Processing Facility`);
+        layers.facilities.push(marker);
+        if (filters.facilities) marker.addTo(map);
+      }
+    });
+
+    // 2. Active Pickups
+    let totalKg = 0;
+    data.activePickups.forEach(p => {
+      const zoneKey = findZone(p.pickup_location);
+      const zone = nairobiZones[zoneKey];
+      if (zone) {
+        // Add slight random offset so multiple pickups don't overlap perfectly
+        const lat = zone.lat + (Math.random() - 0.5) * 0.008;
+        const lng = zone.lng + (Math.random() - 0.5) * 0.008;
+        const marker = L.circleMarker([lat, lng], {
+          radius: 8, fillColor: '#F4B13B', color: '#fff', weight: 2, fillOpacity: 0.9
+        }).bindPopup(`<b>Pickup: ${p.patron_name}</b><br>Type: ${p.waste_type}<br>Vol: ${p.estimated_volume_kg} kg<br>Status: ${p.status}`);
+        layers.pickups.push(marker);
+        if (filters.pickups) marker.addTo(map);
+        totalKg += p.estimated_volume_kg || 0;
+      }
+    });
+
+    // 3. Busy Drivers
+    data.workers.forEach(w => {
+      const zoneKey = findZone(w.service_area);
+      const zone = nairobiZones[zoneKey];
+      if (zone) {
+        const lat = zone.lat + (Math.random() - 0.5) * 0.015;
+        const lng = zone.lng + (Math.random() - 0.5) * 0.015;
+        const marker = L.marker([lat, lng], { icon: createIcon('🚛', 28) })
+          .bindPopup(`<b>Driver: ${w.name}</b><br>Vehicle: ${w.vehicle_type} (${w.vehicle_plate})<br>Area: ${w.service_area}`);
+        layers.drivers.push(marker);
+        if (filters.drivers) marker.addTo(map);
+      }
+    });
+
+    // Update Stats
+    document.getElementById('stat-drivers').textContent = data.workers.length;
+    document.getElementById('stat-pickups').textContent = data.activePickups.length;
+    document.getElementById('stat-kg').textContent = totalKg.toLocaleString() + ' kg';
+  }
+
+  function toggleLayer(type, btn) {
+    filters[type] = !filters[type];
+    btn.classList.toggle('active');
+    layers[type].forEach(m => {
+      if (filters[type]) m.addTo(map); else map.removeLayer(m);
+    });
+  }
+
+  initMap();
+</script>
+</body>
+</html>
