@@ -78,6 +78,10 @@
     <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     <span class="nav-text">Dashboard</span>
   </a>
+  <a href="workers.html" class="nav-item active">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="nav-text">Delivery Workers</span>
+  </a>
   <a href="inventory.html" class="nav-item">
     <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
     <span class="nav-text">Inventory</span>
@@ -85,10 +89,6 @@
   <a href="reports.html" class="nav-item">
     <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     <span class="nav-text">Reports</span>
-  </a>
-  <a href="workers.html" class="nav-item active">
-    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    <span class="nav-text">Delivery Workers</span>
   </a>
   <div class="sidebar-toggle" onclick="toggleSidebar()">
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
@@ -107,26 +107,27 @@
     </div>
 
     <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Service Area</th>
-            <th>Vehicle</th>
-            <th>Plate</th>
-            <th>Status</th>
-            <th>Pickups</th>
-            <th>Total Kg</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="workersTableBody">
-          <tr><td colspan="9" style="text-align:center; color: var(--text-muted);">Loading workers...</td></tr>
-        </tbody>
-      </table>
+      <div style="overflow-x: auto;">
+        <table style="min-width: 900px;">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Service Area</th>
+              <th>Vehicle</th>
+              <th>Plate</th>
+              <th>Status</th>
+              <th>Pickups</th>
+              <th>Total Kg</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="workersTableBody">
+            <tr><td colspan="9" style="text-align:center; color: var(--text-muted);">Loading workers...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
 </main>
 
 <!-- Add/Edit Modal -->
