@@ -269,7 +269,18 @@
   let map = null;
   let mapLayers = { facilities: [], zones: [], drivers: [] };
   
-  const wasteEmojis = { 'processing': '', 'market': '', 'restaurant': '️', 'household': '', 'agriculture': '', 'institutional': '' };
+  const wasteEmojis = { 
+    'processing': '🏭', 
+    'market': '🛒', 
+    'restaurant': '🍽️', 
+    'household': '🏠', 
+    'agriculture': '🌾', 
+    'institutional': '🏫',
+    'fruit_veg': '🥬',
+    'crop_residue': '🌿',
+    'manure': '🐄' 
+  };  
+  
   const statusToStep = { 'pending': 0, 'assigned': 1, 'collected': 3, 'delivered': 4, 'processed': 5, 'cancelled': -1 };
   const vehicleEmojis = { 
     'handcart': '🛺', 
