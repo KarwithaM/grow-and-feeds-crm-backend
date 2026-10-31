@@ -725,5 +725,40 @@ app.patch('/api/pickup-requests/:id/update', requireDashboardKey, async (req, re
   res.json(data);
 });
 
+// ===== INVENTORY API ENDPOINTS =====
+app.get('/api/inventory', requireDashboardKey, async (req, res) => {
+  try {
+    const { data: summary } = await supabase.from('inventory_summary').select('*').eq('id', 1).single();
+    const { data: sales } = await supabase.from('sales').select('*').order('created_at', { ascending: false }).limit(20);
+    res.json({ summary, sales });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/inventory/production', requireDashboardKey, async (req, res) => {
+  try {
+    const { frass_kg, larvae_kg } = req.body;
+    const { data: current } = await supabase.from('inventory_summary').select('frass_stock_kg, larvae_stock_kg').eq('id', 1).single();
+    const newFrass = (current.frass_stock_kg || 0) + parseFloat(frass_kg || 0);
+    const newLarvae = (current.larvae_stock_kg || 0) + parseFloat(larvae_kg || 0);
+    await supabase.from('inventory_summary').update({ frass_stock_kg: newFrass, larvae_stock_kg: newLarvae, updated_at: new Date().toISOString() }).eq('id', 1);
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/inventory/sale', requireDashboardKey, async (req, res) => {
+  try {
+    const { product_type, quantity_kg, customer_name, notes } = req.body;
+    const qty = parseFloat(quantity_kg);
+    const { data: current } = await supabase.from('inventory_summary').select('frass_stock_kg, larvae_stock_kg').eq('id', 1).single();
+    const currentStock = product_type === 'frass' ? current.frass_stock_kg : current.larvae_stock_kg;
+    if (currentStock < qty) return res.status(400).json({ error: 'Insufficient stock' });
+
+    const updateData = product_type === 'frass' ? { frass_stock_kg: currentStock - qty } : { larvae_stock_kg: currentStock - qty };
+    await supabase.from('inventory_summary').update({ ...updateData, updated_at: new Date().toISOString() }).eq('id', 1);
+    await supabase.from('sales').insert({ product_type, quantity_kg: qty, customer_name, notes });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { console.log(`Grow and Feeds Backend listening on port ${PORT}`); });
