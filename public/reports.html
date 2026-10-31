@@ -137,8 +137,8 @@
       
       let html = '';
       
-      // WASTE COLLECTION SECTION
-      html += '<h2 class="section-header">🗑️ Waste Collection Report - Last ' + periodLabel + '</h2>';
+      // WASTE COLLECTION SECTION (Cleaned Title)
+      html += '<h2 class="section-header">Waste Collection Report - Last ' + periodLabel + '</h2>';
       html += '<div class="grid-4">';
       html += '<div class="card metric-card"><h3>Total Pickups</h3><h2>' + data.wasteCollection.summary.totalPickups + '</h2><p>Completed collections</p></div>';
       html += '<div class="card metric-card"><h3>Waste Diverted</h3><h2>' + formatNumber(data.wasteCollection.summary.totalKg) + ' kg</h2><p>From landfills</p></div>';
@@ -153,20 +153,21 @@
         html += '</div>';
       }
       
-      // PRODUCTION SECTION
-      html += '<h2 class="section-header">🏭 Production Report - Last ' + periodLabel + '</h2>';
-      html += '<div class="grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">';
+      // PRODUCTION SECTION (Cleaned Title)
+      html += '<h2 class="section-header">Production Report - Last ' + periodLabel + '</h2>';
+      html += '<div class="grid-4">'; // Changed to grid-4 to match layout
       html += '<div class="card metric-card"><h3>Total Frass Produced</h3><h2>' + formatNumber(data.production.summary.totalFrass) + ' kg</h2><p>Organic fertilizer</p></div>';
       html += '<div class="card metric-card"><h3>Total Larvae Produced</h3><h2>' + formatNumber(data.production.summary.totalLarvae) + ' kg</h2><p>High-protein feed</p></div>';
       html += '<div class="card metric-card"><h3>Total Production</h3><h2>' + formatNumber(data.production.summary.totalProduction) + ' kg</h2><p>Combined output</p></div>';
+      html += '<div class="card metric-card"><h3>Conversion Rate</h3><h2>' + (data.wasteCollection.summary.totalKg > 0 ? ((data.production.summary.totalProduction / data.wasteCollection.summary.totalKg) * 100).toFixed(1) : '0') + '%</h3><p>Waste to product</p></div>';
       html += '</div>';
       
       if (data.production.timeline.length > 0) {
         html += '<div class="card" style="margin-bottom: 24px;"><h3 class="card-title">Production Over Time</h3><div class="chart-container" style="height: 300px;"><canvas id="productionChart"></canvas></div></div>';
       }
       
-      // SALES SECTION
-      html += '<h2 class="section-header">💰 Sales Report - Last ' + periodLabel + '</h2>';
+      // SALES SECTION (Cleaned Title)
+      html += '<h2 class="section-header">Sales Report - Last ' + periodLabel + '</h2>';
       html += '<div class="grid-4">';
       html += '<div class="card metric-card"><h3>Total Sales Volume</h3><h2>' + formatNumber(data.sales.summary.totalSalesKg) + ' kg</h2><p>Products sold</p></div>';
       html += '<div class="card metric-card"><h3>Est. Sales Revenue</h3><h2>KES ' + formatNumber(data.sales.summary.totalSalesRevenue) + '</h2><p>From product sales</p></div>';
