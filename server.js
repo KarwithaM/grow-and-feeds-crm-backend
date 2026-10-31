@@ -888,5 +888,44 @@ app.get('/api/reports/analytics', requireDashboardKey, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== WORKERS MANAGEMENT ENDPOINTS =====
+app.get('/api/workers/stats', requireDashboardKey, async (req, res) => {
+  try {
+    const { data: workers } = await supabase.from('field_workers').select('*').order('name');
+    const { data: pickups } = await supabase.from('pickup_requests')
+      .select('worker_id, estimated_volume_kg, status')
+      .in('status', ['collected', 'processed', 'delivered']);
+
+    const stats = {};
+    pickups.forEach(p => {
+      if (!stats[p.worker_id]) stats[p.worker_id] = { count: 0, kg: 0 };
+      stats[p.worker_id].count += 1;
+      stats[p.worker_id].kg += p.estimated_volume_kg || 0;
+    });
+
+    const enrichedWorkers = workers.map(w => ({
+      ...w,
+      pickups_completed: stats[w.id]?.count || 0,
+      total_kg_collected: stats[w.id]?.kg || 0
+    }));
+
+    res.json(enrichedWorkers);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/field-workers/:id', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('field_workers').update(req.body).eq('id', id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.delete('/api/field-workers/:id', requireDashboardKey, async (req, res) => {
+  const { id } = req.params;
+  const { error } = await supabase.from('field_workers').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { console.log(`Grow and Feeds Backend listening on port ${PORT}`); });
