@@ -927,5 +927,23 @@ app.delete('/api/field-workers/:id', requireDashboardKey, async (req, res) => {
   res.json({ success: true });
 });
 
+// ===== LIVE MAP ENDPOINT =====
+app.get('/api/map/data', requireDashboardKey, async (req, res) => {
+  try {
+    const { data: activePickups } = await supabase
+      .from('pickup_requests')
+      .select('id, patron_name, waste_type, estimated_volume_kg, pickup_location, status, created_at')
+      .in('status', ['pending', 'assigned', 'collected'])
+      .order('created_at', { ascending: false });
+
+    const { data: workers } = await supabase
+      .from('field_workers')
+      .select('id, name, service_area, vehicle_type, vehicle_plate, status')
+      .eq('status', 'busy'); // Only show drivers currently on a job
+
+    res.json({ activePickups: activePickups || [], workers: workers || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { console.log(`Grow and Feeds Backend listening on port ${PORT}`); });
