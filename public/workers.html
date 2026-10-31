@@ -48,6 +48,12 @@
   .metric-card h3 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
   .metric-card h2 { font-size: 32px; color: var(--primary); font-weight: 800; }
 
+  /* NEW FILTER BAR */
+  .filter-bar { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-input { flex: 1; min-width: 250px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; background: #fff; transition: border 0.2s; }
+  .search-input:focus { border-color: var(--primary); }
+  .status-select { padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; outline: none; min-width: 160px; cursor: pointer; }
+
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
   th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
@@ -78,6 +84,7 @@
     <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     <span class="nav-text">Dashboard</span>
   </a>
+  </a>
   <a href="workers.html" class="nav-item active">
     <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     <span class="nav-text">Delivery Workers</span>
@@ -89,7 +96,6 @@
   <a href="reports.html" class="nav-item">
     <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     <span class="nav-text">Reports</span>
-  </a>
   <div class="sidebar-toggle" onclick="toggleSidebar()">
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
   </div>
@@ -106,7 +112,17 @@
       <!-- Populated by JS -->
     </div>
 
-    <div class="card">
+    <!-- NEW: Filter Bar -->
+    <div class="filter-bar">
+      <input type="text" id="workerSearch" class="search-input" placeholder="🔍 Search by name, service area, or license plate...">
+      <select id="statusFilter" class="status-select">
+        <option value="all">All Drivers</option>
+        <option value="available">Available</option>
+        <option value="busy">Busy</option>
+      </select>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
       <div style="overflow-x: auto;">
         <table style="min-width: 900px;">
           <thead>
@@ -123,11 +139,12 @@
             </tr>
           </thead>
           <tbody id="workersTableBody">
-            <tr><td colspan="9" style="text-align:center; color: var(--text-muted);">Loading workers...</td></tr>
+            <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 20px;">Loading workers...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
+  </div>
 </main>
 
 <!-- Add/Edit Modal -->
@@ -156,6 +173,8 @@
 
 <script>
   const API_KEY = localStorage.getItem('gf_key');
+  let allWorkers = []; // Store full list for filtering
+
   function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); }
 
   async function apiFetch(path, opts = {}) {
@@ -167,8 +186,9 @@
   async function loadWorkers() {
     try {
       const workers = await apiFetch('/api/workers/stats');
+      allWorkers = workers; // Save to global variable
       renderSummary(workers);
-      renderTable(workers);
+      renderFilteredWorkers(); // Initial render
     } catch (e) { console.error(e); }
   }
 
@@ -186,10 +206,27 @@
     `;
   }
 
+  // NEW: Filter logic
+  function renderFilteredWorkers() {
+    const searchText = document.getElementById('workerSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    const filtered = allWorkers.filter(w => {
+      const matchesSearch = w.name.toLowerCase().includes(searchText) ||
+                            (w.service_area && w.service_area.toLowerCase().includes(searchText)) ||
+                            (w.vehicle_plate && w.vehicle_plate.toLowerCase().includes(searchText));
+      const matchesStatus = statusFilter === 'all' || w.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+    renderTable(filtered);
+  }
+
   function renderTable(workers) {
     const tbody = document.getElementById('workersTableBody');
     if (workers.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No workers found. Click "Add New Worker" to start.</td></tr>';
+      const msg = allWorkers.length === 0 ? 'No workers found. Click "Add New Worker" to start.' : 'No drivers match your current filters.';
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 20px;">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = workers.map(w => `
@@ -252,6 +289,10 @@
     closeModal();
     loadWorkers();
   }
+
+  // NEW: Attach event listeners for live filtering
+  document.getElementById('workerSearch').addEventListener('input', renderFilteredWorkers);
+  document.getElementById('statusFilter').addEventListener('change', renderFilteredWorkers);
 
   loadWorkers();
 </script>
