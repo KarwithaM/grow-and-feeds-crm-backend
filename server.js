@@ -760,5 +760,120 @@ app.post('/api/inventory/sale', requireDashboardKey, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+app.post('/api/inventory/log-production', requireDashboardKey, async (req, res) => {
+  try {
+    const { frass_kg, larvae_kg, notes } = req.body;
+    await supabase.from('production_log').insert({
+      frass_kg: parseFloat(frass_kg || 0),
+      larvae_kg: parseFloat(larvae_kg || 0),
+      notes: notes || null
+    });
+    res.json({ success: true });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.get('/api/reports/analytics', requireDashboardKey, async (req, res) => {
+  try {
+    const periodDays = parseInt(req.query.period) || 30;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - periodDays);
+    const isoStartDate = startDate.toISOString();
+
+    // Waste Collection Data
+    const { data: pickups, error: pickupError } = await supabase
+      .from('pickup_requests')
+      .select('estimated_volume_kg, waste_type, pickup_location, status, created_at, payment_received')
+      .in('status', ['collected', 'processed', 'delivered'])
+      .gte('created_at', isoStartDate);
+
+    if (pickupError) throw pickupError;
+
+    let totalKg = 0;
+    let totalPickups = pickups.length;
+    let wasteTypes = {};
+    let locations = {};
+    let timeline = {};
+
+    pickups.forEach(row => {
+      const kg = row.estimated_volume_kg || 0;
+      totalKg += kg;
+      wasteTypes[row.waste_type] = (wasteTypes[row.waste_type] || 0) + kg;
+      locations[row.pickup_location] = (locations[row.pickup_location] || 0) + 1;
+      
+      const date = new Date(row.created_at).toISOString().split('T')[0];
+      if (!timeline[date]) timeline[date] = { count: 0, kg: 0 };
+      timeline[date].count += 1;
+      timeline[date].kg += kg;
+    });
+
+    const estimatedRevenue = pickups.reduce((sum, row) => {
+      if (!row.payment_received) return sum;
+      return sum + Math.ceil(((row.estimated_volume_kg || 0) * 0.5) + (15 * 50));
+    }, 0);
+    const co2Prevented = totalKg * 0.5;
+
+    // Production Data
+    const { data: production, error: prodError } = await supabase
+      .from('production_log')
+      .select('*')
+      .gte('created_at', isoStartDate)
+      .order('created_at', { ascending: true });
+
+    if (prodError) throw prodError;
+
+    let totalFrass = 0, totalLarvae = 0;
+    let productionTimeline = {};
+    production.forEach(row => {
+      totalFrass += row.frass_kg || 0;
+      totalLarvae += row.larvae_kg || 0;
+      const date = new Date(row.created_at).toISOString().split('T')[0];
+      if (!productionTimeline[date]) productionTimeline[date] = { frass: 0, larvae: 0 };
+      productionTimeline[date].frass += row.frass_kg || 0;
+      productionTimeline[date].larvae += row.larvae_kg || 0;
+    });
+
+    // Sales Data
+    const { data: sales, error: salesError } = await supabase
+      .from('sales')
+      .select('*')
+      .gte('created_at', isoStartDate)
+      .order('created_at', { ascending: true });
+
+    if (salesError) throw salesError;
+
+    let totalSalesKg = 0, totalSalesRevenue = 0;
+    let salesByProduct = { frass: 0, larvae: 0 };
+    let salesTimeline = {};
+    sales.forEach(row => {
+      totalSalesKg += row.quantity_kg || 0;
+      totalSalesRevenue += (row.quantity_kg || 0) * 150; // Assuming KES 150/kg
+      salesByProduct[row.product_type] = (salesByProduct[row.product_type] || 0) + (row.quantity_kg || 0);
+      const date = new Date(row.created_at).toISOString().split('T')[0];
+      if (!salesTimeline[date]) salesTimeline[date] = { kg: 0, revenue: 0 };
+      salesTimeline[date].kg += row.quantity_kg || 0;
+      salesTimeline[date].revenue += (row.quantity_kg || 0) * 150;
+    });
+
+    res.json({
+      period: periodDays,
+      wasteCollection: {
+        summary: { totalPickups, totalKg, estimatedRevenue, co2Prevented },
+        wasteTypes,
+        locations,
+        timeline: Object.entries(timeline).map(([date, val]) => ({ date, ...val })).sort((a, b) => a.date.localeCompare(b.date))
+      },
+      production: {
+        summary: { totalFrass, totalLarvae, totalProduction: totalFrass + totalLarvae },
+        timeline: Object.entries(productionTimeline).map(([date, val]) => ({ date, ...val })).sort((a, b) => a.date.localeCompare(b.date))
+      },
+      sales: {
+        summary: { totalSalesKg, totalSalesRevenue, salesByProduct },
+        timeline: Object.entries(salesTimeline).map(([date, val]) => ({ date, ...val })).sort((a, b) => a.date.localeCompare(b.date)),
+        recentSales: sales.slice(-10).reverse()
+      }
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { console.log(`Grow and Feeds Backend listening on port ${PORT}`); });
