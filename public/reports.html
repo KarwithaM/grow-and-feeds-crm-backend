@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reports - Grow And Feeds Patrons</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --primary: #0F3D3A; --primary-light: #1A5C57; --secondary: #F4B13B;
+    --tertiary: #E0745E; --bg: #F2E6D6; --card-bg: #FFFFFF; 
+    --text-main: #223300; --text-muted: #6B7280; --border: #E5E7EB;
+    --sidebar-bg: #0F3D3A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar { width: 80px; min-width: 80px; max-width: 80px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px 0; transition: all 0.3s ease; flex-shrink: 0; position: relative; z-index: 100; }
+  .sidebar.expanded { width: 260px; min-width: 260px; max-width: 260px; align-items: flex-start; padding: 20px 24px; }
+  .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; width: 100%; justify-content: center; }
+  .sidebar.expanded .sidebar-header { justify-content: flex-start; }
+  .sidebar-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .sidebar-header h2 { font-size: 15px; font-weight: 700; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sidebar.expanded .sidebar-header h2 { opacity: 1; }
+  .nav-item { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: rgba(255,255,255,0.7); text-decoration: none; transition: all 0.2s; }
+  .sidebar.expanded .nav-item { justify-content: flex-start; padding: 12px 16px; }
+  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+  .nav-text { white-space: nowrap; opacity: 0; transition: opacity 0.2s; display: none; }
+  .sidebar.expanded .nav-text { opacity: 1; display: inline; }
+  .sidebar-toggle { margin-top: auto; padding: 12px; width: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; color: rgba(255,255,255,0.7); border-top: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .sidebar-toggle svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 0.3s; }
+  .sidebar.expanded .sidebar-toggle svg { transform: rotate(180deg); }
+
+  .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .top-bar { background: var(--card-bg); padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .top-bar h1 { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .top-bar-controls { display: flex; gap: 12px; align-items: center; }
+  .period-select { padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; outline: none; cursor: pointer; font-weight: 500; }
+  
+  .scroll-area { flex: 1; overflow-y: auto; padding: 32px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .card { background: var(--card-bg); padding: 24px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  
+  .metric-card { text-align: center; }
+  .metric-card h3 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .metric-card h2 { font-size: 32px; color: var(--primary); font-weight: 800; margin-bottom: 4px; }
+  .metric-card p { font-size: 12px; color: #10B981; font-weight: 600; }
+
+  .chart-container { position: relative; height: 250px; width: 100%; }
+  .card-title { margin: 0 0 16px 0; color: var(--primary); font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .card-title::before { content: ''; width: 4px; height: 20px; background: var(--secondary); border-radius: 2px; }
+
+  .section-header { font-size: 20px; font-weight: 700; color: var(--primary); margin: 32px 0 20px 0; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+  .section-header:first-child { margin-top: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <img src="logo.png" alt="Logo">
+    <h2>Grow And Feeds<br>Patrons</h2>
+  </div>
+  <a href="dashboard.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span class="nav-text">Dashboard</span>
+  </a>
+  <a href="inventory.html" class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    <span class="nav-text">Inventory</span>
+  </a>
+  <a href="reports.html" class="nav-item active">
+    <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="nav-text">Reports</span>
+  </a>
+  <div class="sidebar-toggle" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  </div>
+</aside>
+
+<main class="main-content">
+  <header class="top-bar">
+    <h1>Business Intelligence & Reports</h1>
+    <div class="top-bar-controls">
+      <select id="periodSelect" class="period-select" onchange="loadReports()">
+        <option value="7">Last 7 Days</option>
+        <option value="30" selected>Last 1 Month</option>
+        <option value="90">Last 3 Months</option>
+        <option value="180">Last 6 Months</option>
+        <option value="270">Last 9 Months</option>
+        <option value="365">Annual (12 Months)</option>
+      </select>
+      <a href="dashboard.html" style="color: var(--primary); text-decoration: none; font-weight: bold; font-size: 14px;">← Back to Dashboard</a>
+    </div>
+  </header>
+
+  <div class="scroll-area" id="reportsContent">
+    <p style="text-align: center; color: var(--text-muted); padding: 40px;">Loading reports...</p>
+  </div>
+</main>
+
+<script>
+  const API_KEY = localStorage.getItem('gf_key');
+  
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('expanded'); }
+
+  async function apiFetch(path) {
+    const period = document.getElementById('periodSelect').value;
+    const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'period=' + period, { headers: { 'x-api-key': API_KEY } });
+    if (!res.ok) throw new Error('Request failed');
+    return res.json();
+  }
+
+  function formatNumber(num) {
+    return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+
+  function formatDate(dateStr) {
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  async function loadReports() {
+    const content = document.getElementById('reportsContent');
+    content.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 40px;">Loading reports...</p>';
+    
+    try {
+      const data = await apiFetch('/api/reports/analytics');
+      const periodDays = data.period;
+      const periodLabel = periodDays === 7 ? '7 Days' : periodDays === 30 ? '1 Month' : periodDays === 90 ? '3 Months' : periodDays === 180 ? '6 Months' : periodDays === 270 ? '9 Months' : 'Annual';
+      
+      let html = '';
+      
+      // WASTE COLLECTION SECTION
+      html += '<h2 class="section-header">🗑️ Waste Collection Report - Last ' + periodLabel + '</h2>';
+      html += '<div class="grid-4">';
+      html += '<div class="card metric-card"><h3>Total Pickups</h3><h2>' + data.wasteCollection.summary.totalPickups + '</h2><p>Completed collections</p></div>';
+      html += '<div class="card metric-card"><h3>Waste Diverted</h3><h2>' + formatNumber(data.wasteCollection.summary.totalKg) + ' kg</h2><p>From landfills</p></div>';
+      html += '<div class="card metric-card"><h3>Est. Revenue</h3><h2>KES ' + formatNumber(data.wasteCollection.summary.estimatedRevenue) + '</h2><p>Collection fees</p></div>';
+      html += '<div class="card metric-card"><h3>CO2e Prevented</h3><h2>' + formatNumber(data.wasteCollection.summary.co2Prevented) + ' kg</h2><p>Methane reduction</p></div>';
+      html += '</div>';
+      
+      if (data.wasteCollection.timeline.length > 0) {
+        html += '<div class="grid-2">';
+        html += '<div class="card"><h3 class="card-title">Collection Volume Over Time</h3><div class="chart-container"><canvas id="wasteTimelineChart"></canvas></div></div>';
+        html += '<div class="card"><h3 class="card-title">Waste Type Distribution</h3><div class="chart-container"><canvas id="wasteTypeChart"></canvas></div></div>';
+        html += '</div>';
+      }
+      
+      // PRODUCTION SECTION
+      html += '<h2 class="section-header">🏭 Production Report - Last ' + periodLabel + '</h2>';
+      html += '<div class="grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">';
+      html += '<div class="card metric-card"><h3>Total Frass Produced</h3><h2>' + formatNumber(data.production.summary.totalFrass) + ' kg</h2><p>Organic fertilizer</p></div>';
+      html += '<div class="card metric-card"><h3>Total Larvae Produced</h3><h2>' + formatNumber(data.production.summary.totalLarvae) + ' kg</h2><p>High-protein feed</p></div>';
+      html += '<div class="card metric-card"><h3>Total Production</h3><h2>' + formatNumber(data.production.summary.totalProduction) + ' kg</h2><p>Combined output</p></div>';
+      html += '</div>';
+      
+      if (data.production.timeline.length > 0) {
+        html += '<div class="card" style="margin-bottom: 24px;"><h3 class="card-title">Production Over Time</h3><div class="chart-container" style="height: 300px;"><canvas id="productionChart"></canvas></div></div>';
+      }
+      
+      // SALES SECTION
+      html += '<h2 class="section-header">💰 Sales Report - Last ' + periodLabel + '</h2>';
+      html += '<div class="grid-4">';
+      html += '<div class="card metric-card"><h3>Total Sales Volume</h3><h2>' + formatNumber(data.sales.summary.totalSalesKg) + ' kg</h2><p>Products sold</p></div>';
+      html += '<div class="card metric-card"><h3>Est. Sales Revenue</h3><h2>KES ' + formatNumber(data.sales.summary.totalSalesRevenue) + '</h2><p>From product sales</p></div>';
+      html += '<div class="card metric-card"><h3>Frass Sold</h3><h2>' + formatNumber(data.sales.summary.salesByProduct.frass || 0) + ' kg</h2><p>Fertilizer sales</p></div>';
+      html += '<div class="card metric-card"><h3>Larvae Sold</h3><h2>' + formatNumber(data.sales.summary.salesByProduct.larvae || 0) + ' kg</h2><p>Animal feed sales</p></div>';
+      html += '</div>';
+      
+      if (data.sales.timeline.length > 0) {
+        html += '<div class="grid-2">';
+        html += '<div class="card"><h3 class="card-title">Sales Volume Over Time</h3><div class="chart-container"><canvas id="salesVolumeChart"></canvas></div></div>';
+        html += '<div class="card"><h3 class="card-title">Sales Revenue Over Time</h3><div class="chart-container"><canvas id="salesRevenueChart"></canvas></div></div>';
+        html += '</div>';
+      }
+      
+      if (data.sales.recentSales && data.sales.recentSales.length > 0) {
+        html += '<div class="card"><h3 class="card-title">Recent Sales Transactions</h3><table><thead><tr><th>Date</th><th>Product</th><th>Qty (kg)</th><th>Customer</th><th>Notes</th></tr></thead><tbody>';
+        data.sales.recentSales.forEach(s => {
+          html += '<tr><td>' + formatDate(s.created_at) + '</td><td>' + (s.product_type === 'frass' ? 'BSF Frass' : 'BSF Larvae') + '</td><td>' + s.quantity_kg + '</td><td>' + s.customer_name + '</td><td style="color: var(--text-muted); font-size: 13px;">' + (s.notes || '-') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+      
+      content.innerHTML = html;
+      
+      // Initialize Charts
+      setTimeout(() => {
+        const colors = ['#0F3D3A', '#F4B13B', '#1A5C57', '#E0745E', '#6FA9BB', '#8A5A2B'];
+        
+        // Waste Timeline Chart
+        if (data.wasteCollection.timeline.length > 0 && document.getElementById('wasteTimelineChart')) {
+          new Chart(document.getElementById('wasteTimelineChart'), {
+            type: 'line',
+            data: {
+              labels: data.wasteCollection.timeline.map(t => t.date),
+              datasets: [{
+                label: 'Volume (kg)',
+                data: data.wasteCollection.timeline.map(t => t.kg),
+                borderColor: '#0F3D3A',
+                backgroundColor: 'rgba(15,61,58,0.1)',
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          });
+        }
+        
+        // Waste Type Chart
+        if (Object.keys(data.wasteCollection.wasteTypes).length > 0 && document.getElementById('wasteTypeChart')) {
+          new Chart(document.getElementById('wasteTypeChart'), {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(data.wasteCollection.wasteTypes),
+              datasets: [{ data: Object.values(data.wasteCollection.wasteTypes), backgroundColor: colors, borderWidth: 0 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+          });
+        }
+        
+        // Production Chart
+        if (data.production.timeline.length > 0 && document.getElementById('productionChart')) {
+          new Chart(document.getElementById('productionChart'), {
+            type: 'bar',
+            data: {
+              labels: data.production.timeline.map(t => t.date),
+              datasets: [
+                { label: 'Frass (kg)', data: data.production.timeline.map(t => t.frass), backgroundColor: '#0F3D3A', borderRadius: 4 },
+                { label: 'Larvae (kg)', data: data.production.timeline.map(t => t.larvae), backgroundColor: '#F4B13B', borderRadius: 4 }
+              ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+          });
+        }
+        
+        // Sales Volume Chart
+        if (data.sales.timeline.length > 0 && document.getElementById('salesVolumeChart')) {
+          new Chart(document.getElementById('salesVolumeChart'), {
+            type: 'line',
+            data: {
+              labels: data.sales.timeline.map(t => t.date),
+              datasets: [{
+                label: 'Volume (kg)',
+                data: data.sales.timeline.map(t => t.kg),
+                borderColor: '#E0745E',
+                backgroundColor: 'rgba(224,116,94,0.1)',
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          });
+        }
+        
+        // Sales Revenue Chart
+        if (data.sales.timeline.length > 0 && document.getElementById('salesRevenueChart')) {
+          new Chart(document.getElementById('salesRevenueChart'), {
+            type: 'bar',
+            data: {
+              labels: data.sales.timeline.map(t => t.date),
+              datasets: [{
+                label: 'Revenue (KES)',
+                data: data.sales.timeline.map(t => t.revenue),
+                backgroundColor: '#1A5C57',
+                borderRadius: 4
+              }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          });
+        }
+      }, 100);
+      
+    } catch (error) {
+      content.innerHTML = '<p style="text-align: center; color: #DC2626; padding: 40px;">Error loading reports: ' + error.message + '</p>';
+    }
+  }
+
+  loadReports();
+</script>
+</body>
+</html>
